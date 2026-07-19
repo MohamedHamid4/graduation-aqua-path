@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/providers/household_provider.dart';
+import '../../../shared/services/priority_service.dart';
 import '../../water_delivery/domain/entities/water_delivery.dart';
 import '../../water_delivery/presentation/providers/water_delivery_provider.dart';
 
@@ -449,6 +451,12 @@ class _AreaInfoCard extends ConsumerWidget {
     final household = ref.watch(currentHouseholdProvider).valueOrNull;
     final areaLabel =
         household?.areaName.isNotEmpty == true ? household!.areaName : '—';
+    final priorityLevel = household != null
+        ? GetIt.I<PriorityService>().getPriorityLevel(household.priorityScore)
+        : null;
+    final priorityColor = priorityLevel != null
+        ? Color(priorityLevel.colorValue)
+        : AppColors.textMuted;
 
     return Container(
       padding: EdgeInsets.all(16.w),
@@ -495,10 +503,10 @@ class _AreaInfoCard extends ConsumerWidget {
                       padding:
                           EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
                       decoration: BoxDecoration(
-                        color: AppColors.success.withValues(alpha: 0.12),
+                        color: priorityColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                          color: AppColors.success.withValues(alpha: 0.3),
+                          color: priorityColor.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Row(
@@ -507,15 +515,17 @@ class _AreaInfoCard extends ConsumerWidget {
                           Icon(
                             Icons.verified_rounded,
                             size: 11.w,
-                            color: AppColors.success,
+                            color: priorityColor,
                           ),
                           SizedBox(width: 3.w),
                           Text(
-                            'أولويتك: عالية',
+                            priorityLevel != null
+                                ? 'أولويتك: ${priorityLevel.labelAr}'
+                                : 'أولويتك: —',
                             style: GoogleFonts.cairo(
                               fontSize: 10.sp,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.success,
+                              color: priorityColor,
                             ),
                           ),
                         ],

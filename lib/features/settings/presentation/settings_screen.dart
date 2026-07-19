@@ -1,4 +1,3 @@
-import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,13 +10,11 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
-import '../../../core/errors/failures.dart';
 import '../../../core/router/route_names.dart';
-import '../../../shared/models/household_model.dart';
+import '../../../shared/providers/household_provider.dart';
 import '../../../shared/providers/notification_prefs_provider.dart';
-import '../../auth/domain/repositories/auth_repository.dart';
+import '../../../shared/services/priority_service.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
-import '../../registration/domain/repositories/household_repository.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -25,6 +22,11 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(notificationPrefsProvider);
+    final householdAsync = ref.watch(currentHouseholdProvider);
+    final household = householdAsync.valueOrNull;
+    final priorityLevel = household != null
+        ? GetIt.I<PriorityService>().getPriorityLevel(household.priorityScore)
+        : null;
     final colors = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -72,32 +74,22 @@ class SettingsScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        FutureBuilder<Either<Failure, HouseholdModel?>>(
-                          future: GetIt.I<HouseholdRepository>().getHousehold(
-                            GetIt.I<AuthRepository>().currentUser?.uid ?? '',
-                          ),
-                          builder: (context, snapshot) {
-                            String line1 = '';
+                        Builder(
+                          builder: (context) {
+                            String line1;
                             String line2 = '';
 
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
+                            if (householdAsync.isLoading &&
+                                !householdAsync.hasValue) {
                               line1 = 'جاري تحميل البيانات...';
-                            } else if (snapshot.hasError) {
+                            } else if (householdAsync.hasError) {
                               line1 = 'تعذر تحميل البيانات';
-                            } else if (snapshot.hasData) {
-                              snapshot.data!.fold(
-                                (failure) => line1 = 'تعذر تحميل البيانات',
-                                (household) {
-                                  if (household == null) {
-                                    line1 = 'لم يتم تسجيل الأسرة';
-                                  } else {
-                                    line1 = household.familyName;
-                                    line2 =
-                                        '${household.areaName} • ${household.householdSize} أفراد';
-                                  }
-                                },
-                              );
+                            } else if (household == null) {
+                              line1 = 'لم يتم تسجيل الأسرة';
+                            } else {
+                              line1 = household.familyName;
+                              line2 =
+                                  '${household.areaName} • ${household.householdSize} أفراد';
                             }
 
                             return Column(
@@ -123,25 +115,27 @@ class SettingsScreen extends ConsumerWidget {
                             );
                           },
                         ),
-                        SizedBox(height: 4.h),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 8.w,
-                            vertical: 3.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: Text(
-                            AppStrings.settingsPriorityHigh,
-                            style: GoogleFonts.cairo(
-                              fontSize: 11.sp,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                        if (priorityLevel != null) ...[
+                          SizedBox(height: 4.h),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8.w,
+                              vertical: 3.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: Text(
+                              'أولوية: ${priorityLevel.labelAr}',
+                              style: GoogleFonts.cairo(
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),

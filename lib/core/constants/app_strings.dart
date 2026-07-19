@@ -90,7 +90,6 @@ abstract final class AppStrings {
   static const settingsHelp = 'المساعدة والدعم';
   static const settingsHelpSubtitle = 'الأسئلة الشائعة';
   static const settingsLogout = 'تسجيل الخروج';
-  static const settingsPriorityHigh = 'أولوية: عالية';
 
   // ── Organization: Reports export ────────────────────────────────────────
   static const reportsExportTitle = 'تصدير التقرير';
