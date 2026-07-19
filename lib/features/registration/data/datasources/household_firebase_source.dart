@@ -34,4 +34,15 @@ class HouseholdFirebaseSource {
     if (!doc.exists) return null;
     return HouseholdModel.fromMap(uid, doc.data()! as Map<String, dynamic>);
   }
+
+  /// Live view of `households/{uid}` — used wherever the UI needs to
+  /// reflect the resident's own registered area/priority without a manual
+  /// refresh (e.g. right after editing the household, or if the
+  /// organization recalculates `priorityScore`).
+  Stream<HouseholdModel?> watchHousehold(String uid) {
+    return _householdsRef.doc(uid).snapshots().map((doc) {
+      if (!doc.exists) return null;
+      return HouseholdModel.fromMap(uid, doc.data()! as Map<String, dynamic>);
+    });
+  }
 }

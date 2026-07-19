@@ -15,4 +15,9 @@ abstract class HouseholdRepository {
   });
 
   Future<Either<Failure, HouseholdModel?>> getHousehold(String uid);
+
+  /// Live stream of the same document `getHousehold` reads once — the
+  /// source for any UI that must stay in sync with edits or an
+  /// organization-side priority recalculation without a manual refresh.
+  Stream<Either<Failure, HouseholdModel?>> watchHousehold(String uid);
 }

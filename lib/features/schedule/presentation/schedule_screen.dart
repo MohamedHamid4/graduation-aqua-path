@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../shared/providers/household_provider.dart';
 import '../../water_delivery/domain/entities/water_delivery.dart';
 import '../../water_delivery/presentation/providers/water_delivery_provider.dart';
 
@@ -336,6 +337,10 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final household = ref.watch(currentHouseholdProvider).valueOrNull;
+    final areaLabel = household?.areaName.isNotEmpty == true
+        ? household!.areaName
+        : '—';
     return Container(
       padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 12.h),
       decoration: const BoxDecoration(
@@ -379,7 +384,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   ),
                 ),
                 Text(
-                  'المنطقة: الشجاعية',
+                  'المنطقة: $areaLabel',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.cairo(
@@ -436,11 +441,15 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _AreaInfoCard extends StatelessWidget {
+class _AreaInfoCard extends ConsumerWidget {
   const _AreaInfoCard();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final household = ref.watch(currentHouseholdProvider).valueOrNull;
+    final areaLabel =
+        household?.areaName.isNotEmpty == true ? household!.areaName : '—';
+
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
@@ -472,7 +481,7 @@ class _AreaInfoCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'منطقتك: الشجاعية',
+                  'منطقتك: $areaLabel',
                   style: GoogleFonts.cairo(
                     fontSize: 15.sp,
                     fontWeight: FontWeight.w700,

@@ -76,4 +76,23 @@ class HouseholdRepositoryImpl implements HouseholdRepository {
       return const Left(ServerFailure('تعذّر تحميل بيانات الأسرة'));
     }
   }
+
+  @override
+  Stream<Either<Failure, HouseholdModel?>> watchHousehold(String uid) {
+    try {
+      return _source.watchHousehold(uid).map(
+            (household) => Right<Failure, HouseholdModel?>(household),
+          );
+    } catch (e, st) {
+      AppLogger.error(
+        'watchHousehold failed',
+        tag: 'Household',
+        error: e,
+        stackTrace: st,
+      );
+      return Stream.value(
+        const Left(ServerFailure('تعذّر تحميل بيانات الأسرة')),
+      );
+    }
+  }
 }
