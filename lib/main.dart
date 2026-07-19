@@ -17,6 +17,7 @@ import 'core/offline/offline_write_queue_service.dart';
 import 'firebase_options.dart';
 import 'injection.dart';
 import 'shared/providers/notification_prefs_provider.dart';
+import 'shared/providers/reminder_prefs_provider.dart';
 import 'shared/services/push_notification_service.dart';
 
 void main() async {
@@ -88,6 +89,9 @@ void main() async {
       final container = ProviderContainer();
       await container
           .read(notificationPrefsProvider.notifier)
+          .loadFromStorage();
+      await container
+          .read(deliveryReminderProvider.notifier)
           .loadFromStorage();
 
       runApp(

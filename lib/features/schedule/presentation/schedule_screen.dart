@@ -9,6 +9,7 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/providers/household_provider.dart';
+import '../../../shared/providers/reminder_prefs_provider.dart';
 import '../../../shared/services/priority_service.dart';
 import '../../driver/domain/entities/driver_route.dart';
 import '../../water_delivery/domain/entities/water_delivery.dart';
@@ -43,10 +44,6 @@ String _arabicTime(DateTime d) {
   final minute = d.minute.toString().padLeft(2, '0');
   return '$hour12:$minute $period';
 }
-
-// ── Providers ───────────────────────────────────────────────────────────────
-
-final _remindersProvider = StateProvider<bool>((ref) => false);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Screen
@@ -94,7 +91,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final reminders = ref.watch(_remindersProvider);
+    final reminders = ref.watch(deliveryReminderProvider);
     final historyAsync = ref.watch(areaWaterDeliveriesProvider);
     final history = historyAsync.maybeWhen(
       data: (list) => list,
@@ -270,8 +267,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   SizedBox(height: 24.h),
                   _ReminderToggle(
                     enabled: reminders,
-                    onTap: () => ref.read(_remindersProvider.notifier).state =
-                        !reminders,
+                    onTap: () => ref
+                        .read(deliveryReminderProvider.notifier)
+                        .setEnabled(value: !reminders),
                   ).animate(delay: 500.ms).fadeIn(duration: 400.ms),
                   SizedBox(height: 14.h),
                   SizedBox(

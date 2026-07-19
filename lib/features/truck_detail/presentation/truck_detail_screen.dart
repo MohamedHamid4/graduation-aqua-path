@@ -481,53 +481,6 @@ class _DetailBody extends StatelessWidget {
                       ),
                   SizedBox(height: 12.h),
                 ],
-                SizedBox(
-                  width: double.infinity,
-                  height: 52.h,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'تم تفعيل الإشعارات لهذه الشاحنة',
-                            style: GoogleFonts.cairo(
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          backgroundColor: AppColors.success,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(
-                      Iconsax.notification,
-                      size: 20,
-                    ),
-                    label: Text(
-                      AppStrings.notify,
-                      style: GoogleFonts.cairo(
-                        fontSize: 15.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  ),
-                )
-                    .animate(
-                      delay: 600.ms,
-                    )
-                    .fadeIn(
-                      duration: 400.ms,
-                    ),
               ],
             ),
           ),

@@ -65,7 +65,6 @@ abstract final class AppStrings {
   static const distance = 'المسافة';
   static const load = 'الحمولة';
   static const speed = 'السرعة';
-  static const notify = 'تنبيه عند الاقتراب';
   static const closeButton = 'إغلاق';
   static const confirm = 'تأكيد';
 

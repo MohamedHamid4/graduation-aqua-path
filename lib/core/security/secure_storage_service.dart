@@ -10,6 +10,7 @@ abstract final class StorageKeys {
   static const selectedArea = 'selected_area';
   static const notificationsEnabled = 'notifications_enabled';
   static const notificationRadiusMeters = 'notification_radius_meters';
+  static const deliveryRemindersEnabled = 'delivery_reminders_enabled';
 
   /// Persists the account-type chosen on the sign-up screen ('driver' or
   /// 'resident') the instant it's picked — read by the router's redirect
@@ -116,6 +117,12 @@ class SecureStorageService {
 
   Future<void> setNotificationRadiusMeters(int meters) =>
       write(StorageKeys.notificationRadiusMeters, meters.toString());
+
+  Future<bool> get deliveryRemindersEnabled =>
+      readBool(StorageKeys.deliveryRemindersEnabled);
+
+  Future<void> setDeliveryRemindersEnabled({required bool value}) =>
+      writeBool(StorageKeys.deliveryRemindersEnabled, value: value);
 
   Future<void> saveFcmToken(String token) => write(StorageKeys.fcmToken, token);
 
