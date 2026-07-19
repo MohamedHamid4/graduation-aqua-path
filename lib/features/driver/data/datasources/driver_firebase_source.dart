@@ -41,6 +41,26 @@ class DriverFirebaseSource {
         );
   }
 
+  /// Live routes scheduled for a given area, regardless of which driver is
+  /// assigned — this is what lets a resident's schedule screen show real
+  /// upcoming distribution visits instead of a fabricated calendar.
+  /// Requires the (areaName ASC, scheduledTime ASC) composite index on
+  /// `driver_routes` (see firebase/firestore.indexes.json).
+  Stream<List<DriverRoute>> watchRoutesForArea(String areaName) {
+    return _routesRef
+        .where('areaName', isEqualTo: areaName)
+        .orderBy('scheduledTime')
+        .snapshots()
+        .map(
+          (snap) => snap.docs
+              .map((d) => DriverRoute.fromMap(
+                    d.id,
+                    d.data() as Map<String, dynamic>,
+                  ))
+              .toList(),
+        );
+  }
+
   Future<void> updateRouteStatus({
     required String routeId,
     required String status,

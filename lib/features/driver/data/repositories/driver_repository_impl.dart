@@ -105,6 +105,21 @@ class DriverRepositoryImpl implements DriverRepository {
   }
 
   @override
+  Stream<Either<Failure, List<DriverRoute>>> watchRoutesForArea(
+    String areaName,
+  ) {
+    try {
+      return _source.watchRoutesForArea(areaName).map(
+            (routes) => Right<Failure, List<DriverRoute>>(routes),
+          );
+    } catch (e) {
+      return Stream.value(
+        Left(ServerFailure(e.toString())),
+      );
+    }
+  }
+
+  @override
   Future<Either<Failure, Unit>> updateRouteStatus({
     required String routeId,
     required String status,

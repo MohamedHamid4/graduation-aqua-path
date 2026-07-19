@@ -10,8 +10,10 @@ import 'package:iconsax/iconsax.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../shared/providers/household_provider.dart';
 import '../../../shared/services/priority_service.dart';
+import '../../driver/domain/entities/driver_route.dart';
 import '../../water_delivery/domain/entities/water_delivery.dart';
 import '../../water_delivery/presentation/providers/water_delivery_provider.dart';
+import 'providers/upcoming_schedule_provider.dart';
 
 const _kArabicMonths = [
   '',
@@ -42,30 +44,6 @@ String _arabicTime(DateTime d) {
   return '$hour12:$minute $period';
 }
 
-// ── Mock data models ────────────────────────────────────────────────────────
-// NOTE: the "upcoming deliveries" calendar below is illustrative — there is
-// currently no backend concept of a pre-scheduled truck visit (only live
-// truck positions and confirmed delivery records). The delivery *history*
-// section further down uses real data from [areaWaterDeliveriesProvider].
-
-class _Delivery {
-  final String id;
-  final DateTime date;
-  final String timeSlot;
-  final String driverName;
-  final double liters;
-  final String status; // 'scheduled' | 'delivered' | 'none'
-
-  const _Delivery({
-    required this.id,
-    required this.date,
-    required this.timeSlot,
-    required this.driverName,
-    required this.liters,
-    required this.status,
-  });
-}
-
 // ── Providers ───────────────────────────────────────────────────────────────
 
 final _remindersProvider = StateProvider<bool>((ref) => false);
@@ -85,44 +63,6 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   int _selectedDay = DateTime.now().weekday - 1; // 0=Mon…6=Sun
   bool _historyExpanded = false;
 
-  late final List<_Delivery> _upcoming = () {
-    final now = DateTime.now();
-    return [
-      _Delivery(
-        id: 'u1',
-        date: now.add(const Duration(days: 1)),
-        timeSlot: '8:00 صباحاً',
-        driverName: 'أحمد محمد',
-        liters: 8000,
-        status: 'scheduled',
-      ),
-      _Delivery(
-        id: 'u2',
-        date: now.add(const Duration(days: 3)),
-        timeSlot: '10:00 صباحاً',
-        driverName: 'محمد خالد',
-        liters: 6000,
-        status: 'scheduled',
-      ),
-      _Delivery(
-        id: 'u3',
-        date: now.add(const Duration(days: 6)),
-        timeSlot: '9:30 صباحاً',
-        driverName: 'خالد عمر',
-        liters: 7000,
-        status: 'scheduled',
-      ),
-      _Delivery(
-        id: 'u4',
-        date: now.add(const Duration(days: 8)),
-        timeSlot: '8:00 صباحاً',
-        driverName: 'أحمد محمد',
-        liters: 8000,
-        status: 'scheduled',
-      ),
-    ];
-  }();
-
   String _arabicDayShort(int weekday) {
     const names = ['', 'إث', 'ثل', 'أر', 'خم', 'جم', 'سب', 'أح'];
     return names[weekday];
@@ -130,7 +70,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   String _formatDate(DateTime d) => _arabicDayMonth(d);
 
-  String _dayStatus(DateTime day, List<WaterDelivery> history) {
+  String _dayStatus(
+    DateTime day,
+    List<WaterDelivery> history,
+    List<DriverRoute> upcoming,
+  ) {
     final today = DateTime.now();
     if (day.isBefore(DateTime(today.year, today.month, today.day))) {
       for (final h in history) {
@@ -140,8 +84,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       }
       return 'none';
     }
-    for (final d in _upcoming) {
-      if (d.date.day == day.day && d.date.month == day.month) {
+    for (final r in upcoming) {
+      if (r.scheduledTime.day == day.day && r.scheduledTime.month == day.month) {
         return 'scheduled';
       }
     }
@@ -158,6 +102,14 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
     final isHistoryLoading = historyAsync.isLoading && !historyAsync.hasValue;
     final hasHistoryError = historyAsync.hasError;
+
+    final upcomingAsync = ref.watch(upcomingAreaRoutesProvider);
+    final upcoming = upcomingAsync.maybeWhen(
+      data: (list) => list,
+      orElse: () => const <DriverRoute>[],
+    );
+    final isUpcomingLoading = upcomingAsync.isLoading && !upcomingAsync.hasValue;
+    final hasUpcomingError = upcomingAsync.hasError;
 
     final now = DateTime.now();
     final weekStart = now.subtract(Duration(days: now.weekday - 1));
@@ -191,7 +143,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                       itemCount: 7,
                       itemBuilder: (_, i) {
                         final day = weekDays[i];
-                        final status = _dayStatus(day, history);
+                        final status = _dayStatus(day, history, upcoming);
                         final isToday =
                             day.day == now.day && day.month == now.month;
                         final isSelected = _selectedDay == i;
@@ -209,21 +161,41 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   SizedBox(height: 24.h),
                   const _SectionTitle(title: 'الأيام القادمة'),
                   SizedBox(height: 10.h),
-                  if (_upcoming.isNotEmpty)
-                    _NextDeliveryCard(delivery: _upcoming.first)
+                  if (isUpcomingLoading)
+                    const _HistoryLoadingPlaceholder()
+                  else if (hasUpcomingError)
+                    Text(
+                      'تعذّر تحميل جدول التوزيع القادم',
+                      style: GoogleFonts.cairo(
+                        fontSize: 12.sp,
+                        color: AppColors.danger,
+                      ),
+                    )
+                  else if (upcoming.isEmpty)
+                    Text(
+                      'لا توجد توزيعات قادمة مجدولة',
+                      style: GoogleFonts.cairo(
+                        fontSize: 12.sp,
+                        color: AppColors.textMuted,
+                      ),
+                    )
+                  else ...[
+                    _NextDeliveryCard(route: upcoming.first)
                         .animate(delay: 300.ms)
                         .fadeIn(duration: 400.ms)
                         .slideY(begin: 0.06, end: 0),
-                  SizedBox(height: 8.h),
-                  ...List.generate(
-                    _upcoming.length - 1,
-                    (i) => Padding(
-                      padding: EdgeInsets.only(bottom: 8.h),
-                      child: _UpcomingCard(delivery: _upcoming[i + 1])
-                          .animate(delay: Duration(milliseconds: 350 + i * 80))
-                          .fadeIn(duration: 400.ms),
+                    SizedBox(height: 8.h),
+                    ...List.generate(
+                      upcoming.length - 1,
+                      (i) => Padding(
+                        padding: EdgeInsets.only(bottom: 8.h),
+                        child: _UpcomingCard(route: upcoming[i + 1])
+                            .animate(
+                                delay: Duration(milliseconds: 350 + i * 80))
+                            .fadeIn(duration: 400.ms),
+                      ),
                     ),
-                  ),
+                  ],
                   SizedBox(height: 24.h),
                   GestureDetector(
                     onTap: () =>
@@ -649,10 +621,10 @@ class _DayCard extends StatelessWidget {
   }
 }
 
-class _NextDeliveryCard extends StatelessWidget {
-  final _Delivery delivery;
+class _NextDeliveryCard extends ConsumerWidget {
+  final DriverRoute route;
 
-  const _NextDeliveryCard({required this.delivery});
+  const _NextDeliveryCard({required this.route});
 
   static String _arabicDay(int wd) {
     const n = [
@@ -669,7 +641,10 @@ class _NextDeliveryCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final driverName =
+        ref.watch(driverNameProvider(route.driverUid)).valueOrNull ?? '';
+
     return Container(
       padding: EdgeInsets.all(16.w),
       decoration: BoxDecoration(
@@ -716,7 +691,7 @@ class _NextDeliveryCard extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${delivery.liters.toStringAsFixed(0)} لتر',
+                '${route.expectedLiters.toStringAsFixed(0)} لتر',
                 style: GoogleFonts.cairo(
                   fontSize: 13.sp,
                   fontWeight: FontWeight.w700,
@@ -736,8 +711,8 @@ class _NextDeliveryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${_arabicDay(delivery.date.weekday)}، '
-                      '${delivery.date.day} يونيو',
+                      '${_arabicDay(route.scheduledTime.weekday)}، '
+                      '${_arabicDayMonth(route.scheduledTime)}',
                       style: GoogleFonts.cairo(
                         fontSize: 16.sp,
                         fontWeight: FontWeight.w700,
@@ -751,23 +726,25 @@ class _NextDeliveryCard extends StatelessWidget {
                             size: 12.w, color: Colors.white70),
                         SizedBox(width: 4.w),
                         Text(
-                          delivery.timeSlot,
+                          route.timeSlot,
                           style: GoogleFonts.cairo(
                             fontSize: 12.sp,
                             color: Colors.white70,
                           ),
                         ),
-                        SizedBox(width: 10.w),
-                        Icon(Icons.person_rounded,
-                            size: 12.w, color: Colors.white70),
-                        SizedBox(width: 4.w),
-                        Text(
-                          delivery.driverName,
-                          style: GoogleFonts.cairo(
-                            fontSize: 12.sp,
-                            color: Colors.white70,
+                        if (driverName.isNotEmpty) ...[
+                          SizedBox(width: 10.w),
+                          Icon(Icons.person_rounded,
+                              size: 12.w, color: Colors.white70),
+                          SizedBox(width: 4.w),
+                          Text(
+                            driverName,
+                            style: GoogleFonts.cairo(
+                              fontSize: 12.sp,
+                              color: Colors.white70,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ],
@@ -781,10 +758,10 @@ class _NextDeliveryCard extends StatelessWidget {
   }
 }
 
-class _UpcomingCard extends StatelessWidget {
-  final _Delivery delivery;
+class _UpcomingCard extends ConsumerWidget {
+  final DriverRoute route;
 
-  const _UpcomingCard({required this.delivery});
+  const _UpcomingCard({required this.route});
 
   static String _arabicDay(int wd) {
     const n = [
@@ -801,7 +778,10 @@ class _UpcomingCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final driverName =
+        ref.watch(driverNameProvider(route.driverUid)).valueOrNull ?? '';
+
     return Container(
       padding: EdgeInsets.all(14.w),
       decoration: BoxDecoration(
@@ -830,8 +810,8 @@ class _UpcomingCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${_arabicDay(delivery.date.weekday)}، '
-                  '${delivery.date.day} يونيو',
+                  '${_arabicDay(route.scheduledTime.weekday)}، '
+                  '${_arabicDayMonth(route.scheduledTime)}',
                   style: GoogleFonts.cairo(
                     fontSize: 13.sp,
                     fontWeight: FontWeight.w600,
@@ -840,7 +820,9 @@ class _UpcomingCard extends StatelessWidget {
                 ),
                 SizedBox(height: 3.h),
                 Text(
-                  '⏰ ${delivery.timeSlot}  •  ${delivery.driverName}',
+                  driverName.isNotEmpty
+                      ? '⏰ ${route.timeSlot}  •  $driverName'
+                      : '⏰ ${route.timeSlot}',
                   style: GoogleFonts.cairo(
                     fontSize: 11.sp,
                     color: AppColors.textMuted,
@@ -856,7 +838,7 @@ class _UpcomingCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              '${delivery.liters.toStringAsFixed(0)} ل',
+              '${route.expectedLiters.toStringAsFixed(0)} ل',
               style: GoogleFonts.cairo(
                 fontSize: 11.sp,
                 fontWeight: FontWeight.w600,

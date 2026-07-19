@@ -28,6 +28,14 @@ abstract class DriverRepository {
     String driverUid,
   );
 
+  /// Live stream of every route scheduled for a given area, regardless of
+  /// assigned driver — the resident-facing counterpart to
+  /// [watchRoutesForDriver], used to show upcoming distribution visits on
+  /// the resident's own schedule screen.
+  Stream<Either<Failure, List<DriverRoute>>> watchRoutesForArea(
+    String areaName,
+  );
+
   Future<Either<Failure, Unit>> updateRouteStatus({
     required String routeId,
     required String status,

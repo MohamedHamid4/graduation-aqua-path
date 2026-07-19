@@ -25,6 +25,14 @@
       ]
     },
     {
+      "collectionGroup": "driver_routes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "areaName", "order": "ASCENDING" },
+        { "fieldPath": "scheduledTime", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "water_deliveries",
       "queryScope": "COLLECTION",
       "fields": [
