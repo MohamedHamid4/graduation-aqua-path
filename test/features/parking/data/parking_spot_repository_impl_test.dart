@@ -60,27 +60,39 @@ void main() {
       when(() => source.registerStop(
             latitude: any(named: 'latitude'),
             longitude: any(named: 'longitude'),
+            driverUid: any(named: 'driverUid'),
+            areaName: any(named: 'areaName'),
           )).thenAnswer((_) async {});
 
       final result = await repository.registerStop(
         latitude: 31.50,
         longitude: 34.46,
+        driverUid: 'driver-uid-1',
+        areaName: 'الشجاعية',
       );
 
       expect(result.isRight(), true);
-      verify(() => source.registerStop(latitude: 31.50, longitude: 34.46))
-          .called(1);
+      verify(() => source.registerStop(
+            latitude: 31.50,
+            longitude: 34.46,
+            driverUid: 'driver-uid-1',
+            areaName: 'الشجاعية',
+          )).called(1);
     });
 
     test('returns Left on failure without throwing', () async {
       when(() => source.registerStop(
             latitude: any(named: 'latitude'),
             longitude: any(named: 'longitude'),
+            driverUid: any(named: 'driverUid'),
+            areaName: any(named: 'areaName'),
           )).thenThrow(Exception('network error'));
 
       final result = await repository.registerStop(
         latitude: 31.50,
         longitude: 34.46,
+        driverUid: 'driver-uid-1',
+        areaName: 'الشجاعية',
       );
 
       expect(result.isLeft(), true);
