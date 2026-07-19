@@ -1,0 +1,37 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "trucks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "lastUpdated", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "households",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "areaName", "order": "ASCENDING" },
+        { "fieldPath": "daysSinceLastDelivery", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "driver_routes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "driverUid", "order": "ASCENDING" },
+        { "fieldPath": "scheduledTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "water_deliveries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "areaName", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

@@ -1,0 +1,27 @@
+rules_version = '2';
+
+// AquaPath Firebase Storage rules.
+//
+// Only one path is currently used by the app: driver profile pictures.
+// Household/truck photos are not part of the current feature set — if
+// added later, follow the same "owner-uid-in-path" pattern rather than
+// a blanket authenticated-write rule.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // driver_profile_pictures/{uid}/... — only the owning driver may
+    // upload; anyone signed in may view (organization dashboard and
+    // resident-facing truck cards both display driver photos).
+    match /driver_profile_pictures/{uid}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

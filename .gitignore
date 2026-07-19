@@ -1,0 +1,43 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+.pub-cache/
+.pub/
+*.g.dart.bak
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Claude Code local state
+.claude/
+
+# Android
+android/.gradle/
+android/local.properties
+android/**/gradlew
+android/**/gradlew.bat
+**/android/**/GeneratedPluginRegistrant.java
+**/android/key.properties
+
+# iOS
+**/ios/Flutter/.last_build_id
+**/ios/Pods/
+**/ios/.symlinks/
+
+# Node (Cloud Functions)
+functions/node_modules/
+functions/lib/
+
+# Firebase local
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Misc
+*.log
+.DS_Store

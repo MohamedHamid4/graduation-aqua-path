@@ -1,0 +1,211 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────
+// AquaPath Firestore Security Rules
+//
+// Authorization is role-based via Firebase Auth custom claims
+// (request.auth.token.role), NOT by re-deriving role from document
+// existence — that was the pre-migration approach (a Firestore read on
+// every router redirect) and is replaced everywhere here. Claims are set
+// exclusively by Cloud Functions (see functions/src/index.ts):
+//   - `resident` / `driver`: set automatically when the matching
+//     households/{uid} or drivers/{uid} profile document is created.
+//   - `organization`: set exclusively by the createOrganizationUser
+//     callable, itself only invocable by an existing organization
+//     account. There is no client-writable path to this claim.
+// ─────────────────────────────────────────────────────────────────────
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Role helpers ──────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return isSignedIn() ? request.auth.token.role : null;
+    }
+
+    function isResident() {
+      return role() == 'resident';
+    }
+
+    function isDriver() {
+      return role() == 'driver';
+    }
+
+    function isOrganization() {
+      return role() == 'organization';
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ── organizations/{uid} ──────────────────────────────────────────
+    // Only ever created by the createOrganizationUser Cloud Function
+    // (Admin SDK — rules don't apply to Admin SDK writes). Clients may
+    // only read their own record.
+    match /organizations/{uid} {
+      allow read: if isOwner(uid) || isOrganization();
+      allow write: if false;
+    }
+
+    // ── households/{uid} ─────────────────────────────────────────────
+    // One household per Firebase Auth account. Residents own their own
+    // record; organizations get full read access for the resident
+    // management screen but cannot silently edit personal data.
+    match /households/{uid} {
+      allow read: if isOwner(uid) || isOrganization();
+      allow create: if isOwner(uid) && isResident()
+                    && request.resource.data.keys().hasAll(['areaName', 'householdSize']);
+      allow update: if isOwner(uid) && isResident();
+      allow delete: if isOwner(uid) || isOrganization();
+    }
+
+    // ── drivers/{uid} ─────────────────────────────────────────────────
+    // Doc id == the driver's own Firebase Auth uid. A driver may create
+    // and edit their own profile; only the organization may change
+    // `status` (activate/disable) or `assignedArea`.
+    match /drivers/{uid} {
+      allow read: if isOwner(uid) || isOrganization() || isSignedIn();
+      allow create: if isOwner(uid) && isDriver();
+      allow update: if isOrganization()
+                    || (isOwner(uid) && isDriver()
+                        && !request.resource.data.diff(resource.data)
+                              .affectedKeys().hasAny(['status', 'assignedArea']));
+      allow delete: if isOrganization();
+    }
+
+    // ── trucks/{truckId} ─────────────────────────────────────────────
+    // Doc id == the owning driver's uid (see driver trip-start code).
+    // This is the collection the P0-1 finding was about: previously any
+    // authenticated user could write any truck. Now only the owning
+    // driver or an organization may write, and only the owning driver's
+    // writes are further restricted to the operational fields a trip
+    // lifecycle actually touches — a driver can't rewrite `driverName`
+    // or forge another driver's identity onto their own truck doc.
+    match /trucks/{truckId} {
+      allow read: if isSignedIn();
+      allow create: if isOrganization()
+                    || (isOwner(truckId) && isDriver());
+      allow update: if isOrganization()
+                    || (isOwner(truckId) && isDriver()
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                              .hasOnly([
+                                'status', 'latitude', 'longitude', 'currentLoad',
+                                'distributedAmount', 'deliveryCount', 'activeRouteId',
+                                'lastUpdated', 'lastDeliveryAt', 'averageSpeed', 'driverName',
+                                'tripStartedAt'
+                              ]));
+      allow delete: if isOrganization();
+    }
+
+    // ── driver_routes/{routeId} ───────────────────────────────────────
+    // Work schedules — created exclusively by the organization
+    // (Operations Manager). A driver may only update the status of a
+    // route already assigned to them (start/complete), never create or
+    // reassign one.
+    match /driver_routes/{routeId} {
+      allow read: if isSignedIn();
+      allow create: if isOrganization();
+      allow update: if isOrganization()
+                    || (isDriver() && resource.data.driverUid == request.auth.uid
+                        && request.resource.data.diff(resource.data)
+                              .affectedKeys().hasOnly(['status']));
+      allow delete: if isOrganization();
+    }
+
+    // ── areas/{areaId} ────────────────────────────────────────────────
+    // Read by every role (residents need area names for registration;
+    // drivers for their assigned area); writes are organization-only.
+    match /areas/{areaId} {
+      allow read: if isSignedIn();
+      allow write: if isOrganization();
+    }
+
+    // ── notifications/{id} ────────────────────────────────────────────
+    // Organization-authored broadcasts. The document itself is both the
+    // durable send-history record and the trigger payload for
+    // `onNotificationCreated` (see functions/src/index.ts), which is
+    // what actually publishes it via FCM — write access here is
+    // organization-only for the same reason `trucks` write access is
+    // driver-scoped: this collection's whole purpose is to be trusted
+    // input to a server-side fan-out, so nothing else may create one.
+    match /notifications/{notificationId} {
+      allow read: if isOrganization();
+      allow create: if isOrganization();
+      allow update, delete: if isOrganization();
+    }
+
+    // ── water_deliveries/{deliveryId} ────────────────────────────────
+    // Driver-confirmed deliveries — the driver is the sole source of
+    // truth for the recorded amount (see the water_delivery feature
+    // migration). A resident may only ever touch `acknowledgedByUids`
+    // on an existing delivery, never the recorded quantity or any other
+    // field.
+    match /water_deliveries/{deliveryId} {
+      allow read: if isOrganization()
+                  || (isResident()
+                      && resource.data.areaName ==
+                         get(/databases/$(database)/documents/households/$(request.auth.uid)).data.areaName)
+                  || (isDriver() && resource.data.driverUid == request.auth.uid);
+      allow create: if isDriver()
+                    && request.resource.data.driverUid == request.auth.uid
+                    // trucks/{uid} is keyed by the owning driver's uid
+                    // (see the trip-start code) — a delivery can only
+                    // ever be attributed to the confirming driver's own
+                    // truck, never someone else's.
+                    && request.resource.data.truckId == request.auth.uid
+                    // The client-side transaction already checks the
+                    // amount against the truck's actual remaining load,
+                    // but that check lives entirely in application code
+                    // — nothing stopped a modified/rewritten client from
+                    // skipping it and writing an arbitrary number
+                    // directly. 20,000L is a generous ceiling relative
+                    // to the ~10,000L default truck capacity (covers
+                    // larger trucks with headroom) while still rejecting
+                    // obviously bogus values.
+                    && request.resource.data.amountLiters > 0
+                    && request.resource.data.amountLiters <= 20000;
+      allow update: if isOrganization()
+                    || (isResident()
+                        && request.resource.data.diff(resource.data)
+                              .affectedKeys().hasOnly(['acknowledgedByUids']));
+      allow delete: if isOrganization();
+    }
+
+    // ── parking_spots/{spotId} ────────────────────────────────────────
+    // Auto-detected by the driver app (registerStop), moderated by the
+    // organization (approve/edit/disable/delete).
+    //
+    // Both `create` and the driver branch of `update` used to only
+    // restrict *which fields* a driver could touch, not *what values*
+    // those fields could hold — a driver could create a spot with
+    // `approvalStatus: 'approved'` and `isVerified: true` directly,
+    // bypassing organization moderation entirely, or push `isVerified:
+    // true` on an update without ever crossing the real stop-count
+    // threshold. Both are now enforced server-side, not just assumed
+    // from client behavior.
+    match /parking_spots/{spotId} {
+      allow read: if isSignedIn();
+      allow create: if isDriver()
+                    && request.resource.data.approvalStatus == 'pending'
+                    && request.resource.data.isVerified ==
+                       (request.resource.data.stopCount > 3);
+      allow update: if isOrganization()
+                    || (isDriver()
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                              .hasOnly(['stopCount', 'latitude', 'longitude',
+                                        'isVerified', 'lastStoppedAt', 'driverUids', 'areaName'])
+                        && request.resource.data.approvalStatus == resource.data.approvalStatus
+                        && request.resource.data.isVerified ==
+                           (request.resource.data.stopCount > 3));
+      allow delete: if isOrganization();
+    }
+
+    // ── FCM token registry (topic-based messaging is used instead, see
+    // push_notification_service.dart, so no per-token collection exists
+    // to secure here.) ────────────────────────────────────────────────
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "366533302066",
+    "project_id": "aquapath-c2188",
+    "storage_bucket": "aquapath-c2188.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:366533302066:android:3c66448c5fbab04fd8292b",
+        "android_client_info": {
+          "package_name": "com.aquapath.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDjIjr-t6liXDdf8DqoUuek233sCpDqwGw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

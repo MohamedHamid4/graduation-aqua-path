@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Location permissions for live truck tracking -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Required so a driver's location keeps broadcasting while the app
+         is backgrounded during an active trip (Android 10+ requires this
+         as a separate permission from the two above, and it can only be
+         requested after fine/coarse location has already been granted —
+         see LocationService for the runtime request flow). -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- Android 9+ foreground service; Android 14+ additionally requires
+         the typed FOREGROUND_SERVICE_LOCATION permission alongside it.
+         geolocator_android declares and starts this service itself once
+         AndroidSettings.foregroundNotificationConfig is set — these two
+         permission lines are the app-level prerequisite for that. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Belt-and-suspenders: keeps the location foreground service from
+         being killed under Doze/App-Standby on stricter OEM battery
+         managers (Xiaomi/Huawei/etc. commonly ignore this, but stock
+         Android respects it, and it costs nothing to declare). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <application
+        android:label="AquaPath"
+        android:name="${applicationName}"
+        android:icon="@drawable/launch_background">
+
+        <!-- Google Maps API key — replace with a real key before release -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyAyFT3HMBXZfMCa34A53TRujnjrS3AssKE" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+
+            <meta-data
+                android:name="io.flutter.embedding.android.NormalTheme"
+                android:resource="@style/NormalTheme" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+
+    <!-- Required to query activities that can process text, for example
+         when an Android process is started from a notification action. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
+</manifest>
