@@ -13,6 +13,9 @@ import 'features/auth/domain/repositories/auth_repository.dart';
 import 'features/driver/data/datasources/driver_firebase_source.dart';
 import 'features/driver/data/repositories/driver_repository_impl.dart';
 import 'features/driver/domain/repositories/driver_repository.dart';
+import 'features/notifications/data/datasources/notification_history_firebase_source.dart';
+import 'features/notifications/data/repositories/notification_history_repository_impl.dart';
+import 'features/notifications/domain/repositories/notification_history_repository.dart';
 import 'features/organization/data/datasources/organization_firebase_source.dart';
 import 'features/organization/data/repositories/organization_repository_impl.dart';
 import 'features/organization/domain/repositories/organization_repository.dart';
@@ -89,7 +92,11 @@ Future<void> configureDependencies() async {
     ),
   );
   getIt.registerLazySingleton<PushNotificationService>(
-    () => PushNotificationService(getIt<SecureStorageService>()),
+    () => PushNotificationService(
+      getIt<SecureStorageService>(),
+      getIt<NotificationHistoryRepository>(),
+      getIt<AuthRepository>(),
+    ),
   );
   getIt.registerLazySingleton<ReportExportService>(ReportExportService.new);
 
@@ -119,6 +126,9 @@ Future<void> configureDependencies() async {
   );
   getIt.registerLazySingleton<OrganizationFirebaseSource>(
     () => OrganizationFirebaseSource(getIt<FirebaseFirestore>()),
+  );
+  getIt.registerLazySingleton<NotificationHistoryFirebaseSource>(
+    () => NotificationHistoryFirebaseSource(getIt<FirebaseFirestore>()),
   );
 
   // ── Repositories ──────────────────────────────────────────────────────
@@ -157,5 +167,10 @@ Future<void> configureDependencies() async {
   );
   getIt.registerLazySingleton<OrganizationRepository>(
     () => OrganizationRepositoryImpl(getIt<OrganizationFirebaseSource>()),
+  );
+  getIt.registerLazySingleton<NotificationHistoryRepository>(
+    () => NotificationHistoryRepositoryImpl(
+      getIt<NotificationHistoryFirebaseSource>(),
+    ),
   );
 }

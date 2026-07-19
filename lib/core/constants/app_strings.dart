@@ -68,6 +68,13 @@ abstract final class AppStrings {
   static const closeButton = 'إغلاق';
   static const confirm = 'تأكيد';
 
+  // ── Notifications ─────────────────────────────────────────────────────
+  static const notificationsTitle = 'الإشعارات';
+  static const notificationsMarkAllRead = 'قراءة الكل';
+  static const notificationsEmpty = 'لا توجد إشعارات بعد';
+  static const notificationsAll = 'الكل';
+  static const notificationsUnread = 'غير مقروءة';
+
   // ── Driver ────────────────────────────────────────────────────────────
   static const resumeTrip = 'استئناف';
   static const pauseTrip = 'إيقاف مؤقت';
