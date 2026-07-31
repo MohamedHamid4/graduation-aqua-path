@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../notifications/presentation/providers/notification_history_provider.dart';
 
 class HomeShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
@@ -14,6 +15,13 @@ class HomeShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final unreadCount = ref
+            .watch(notificationHistoryProvider)
+            .valueOrNull
+            ?.where((n) => !n.read)
+            .length ??
+        0;
+
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: Container(
@@ -50,7 +58,7 @@ class HomeShell extends ConsumerWidget {
                   label: 'الإشعارات',
                   isActive: navigationShell.currentIndex == 2,
                   onTap: () => navigationShell.goBranch(2),
-                  badgeCount: 3,
+                  badgeCount: unreadCount,
                 ),
                 _NavItem(
                   icon: Iconsax.user,
