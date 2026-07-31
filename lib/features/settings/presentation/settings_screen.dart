@@ -43,108 +43,111 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ).animate().fadeIn(duration: 400.ms),
             SizedBox(height: 18.h),
-            Container(
-              padding: EdgeInsets.all(18.w),
-              decoration: BoxDecoration(
-                gradient: AppColors.heroGradient,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 56.w,
-                    height: 56.w,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white24),
+            GestureDetector(
+              onTap: () => context.push(RouteNames.register),
+              child: Container(
+                padding: EdgeInsets.all(18.w),
+                decoration: BoxDecoration(
+                  gradient: AppColors.heroGradient,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
                     ),
-                    child: Icon(Icons.person_rounded,
-                        color: Colors.white, size: 28.w),
-                  ),
-                  SizedBox(width: 14.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Builder(
-                          builder: (context) {
-                            String line1;
-                            String line2 = '';
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 56.w,
+                      height: 56.w,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Icon(Icons.person_rounded,
+                          color: Colors.white, size: 28.w),
+                    ),
+                    SizedBox(width: 14.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Builder(
+                            builder: (context) {
+                              String line1;
+                              String line2 = '';
 
-                            if (householdAsync.isLoading &&
-                                !householdAsync.hasValue) {
-                              line1 = 'جاري تحميل البيانات...';
-                            } else if (householdAsync.hasError) {
-                              line1 = 'تعذر تحميل البيانات';
-                            } else if (household == null) {
-                              line1 = 'لم يتم تسجيل الأسرة';
-                            } else {
-                              line1 = household.familyName;
-                              line2 =
-                                  '${household.areaName} • ${household.householdSize} أفراد';
-                            }
+                              if (householdAsync.isLoading &&
+                                  !householdAsync.hasValue) {
+                                line1 = 'جاري تحميل البيانات...';
+                              } else if (householdAsync.hasError) {
+                                line1 = 'تعذر تحميل البيانات';
+                              } else if (household == null) {
+                                line1 = 'لم يتم تسجيل الأسرة';
+                              } else {
+                                line1 = household.familyName;
+                                line2 =
+                                    '${household.areaName} • ${household.householdSize} أفراد';
+                              }
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  line1,
-                                  style: GoogleFonts.cairo(
-                                    fontSize: 18.sp,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                if (line2.isNotEmpty)
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   Text(
-                                    line2,
+                                    line1,
                                     style: GoogleFonts.cairo(
-                                      fontSize: 12.sp,
-                                      color: Colors.white70,
+                                      fontSize: 18.sp,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
                                     ),
                                   ),
-                              ],
-                            );
-                          },
-                        ),
-                        if (priorityLevel != null) ...[
-                          SizedBox(height: 4.h),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 8.w,
-                              vertical: 3.h,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Text(
-                              'أولوية: ${priorityLevel.labelAr}',
-                              style: GoogleFonts.cairo(
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                                  if (line2.isNotEmpty)
+                                    Text(
+                                      line2,
+                                      style: GoogleFonts.cairo(
+                                        fontSize: 12.sp,
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
+                          if (priorityLevel != null) ...[
+                            SizedBox(height: 4.h),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 8.w,
+                                vertical: 3.h,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: Text(
+                                'أولوية: ${priorityLevel.labelAr}',
+                                style: GoogleFonts.cairo(
+                                  fontSize: 11.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                  Icon(
-                    Iconsax.edit,
-                    color: Colors.white70,
-                    size: 18.w,
-                  ),
-                ],
+                    Icon(
+                      Iconsax.edit,
+                      color: Colors.white70,
+                      size: 18.w,
+                    ),
+                  ],
+                ),
               ),
             )
                 .animate(delay: 100.ms)
