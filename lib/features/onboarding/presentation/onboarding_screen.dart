@@ -226,20 +226,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       onPressed: state.isSubmitting
                           ? null
                           : () {
-                              if (_page == 0) {
-                                if (_familyNameController.text.trim().isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      behavior: SnackBarBehavior.floating,
-                                      content: Text(
-                                        'يرجى إدخال اسم العائلة',
-                                        style: GoogleFonts.cairo(),
-                                      ),
-                                      backgroundColor: AppColors.danger,
-                                    ),
-                                  );
-                                  return;
-                                }
+                              if (_page == 0 && !notifier.validateFamilyName()) {
+                                return;
                               }
                               if (_page < 3) {
                                 _controller.nextPage(
@@ -310,7 +298,16 @@ class _OnboardingPage extends StatelessWidget {
     return SingleChildScrollView(
       padding: EdgeInsets.symmetric(horizontal: 32.w),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        // A Column defaults to mainAxisSize.max, which — as the direct
+        // child of a SingleChildScrollView — receives an unbounded
+        // (infinite) height constraint. Sizing to that constraint (rather
+        // than to its own content) is what produced the overlapping-card
+        // rendering: children were positioned against a bogus computed
+        // height instead of their actual stacked height. `min` sizes the
+        // column to its content, which is also the only thing that makes
+        // `mainAxisAlignment: center` (removed above) meaningful in a
+        // scrollable in the first place.
+        mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(height: 40.h),
           Container(
@@ -558,7 +555,6 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       margin: EdgeInsets.only(bottom: 16.h),
       padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
