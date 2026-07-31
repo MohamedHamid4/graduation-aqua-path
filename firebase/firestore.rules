@@ -55,9 +55,20 @@ service cloud.firestore {
     // One household per Firebase Auth account. Residents own their own
     // record; organizations get full read access for the resident
     // management screen but cannot silently edit personal data.
+    //
+    // `create` is intentionally NOT gated on isResident(): the `resident`
+    // claim is only ever granted by the onHouseholdCreated Cloud Function
+    // AFTER this document exists (see functions/src/index.ts), so a
+    // first-time registrant's ID token can never carry it yet. Requiring
+    // isResident() here made self-registration permanently unreachable —
+    // ownership of `uid` plus the required-field shape check is the whole
+    // trust boundary for a brand-new doc. `update` still requires the
+    // claim, since by then registration has completed and the claim is
+    // guaranteed to be on the token (the client awaits it — see
+    // AuthRepository.waitForRoleClaim).
     match /households/{uid} {
       allow read: if isOwner(uid) || isOrganization();
-      allow create: if isOwner(uid) && isResident()
+      allow create: if isOwner(uid)
                     && request.resource.data.keys().hasAll(['areaName', 'householdSize']);
       allow update: if isOwner(uid) && isResident();
       allow delete: if isOwner(uid) || isOrganization();
@@ -67,9 +78,16 @@ service cloud.firestore {
     // Doc id == the driver's own Firebase Auth uid. A driver may create
     // and edit their own profile; only the organization may change
     // `status` (activate/disable) or `assignedArea`.
+    //
+    // Same bootstrap reasoning as households/{uid} above: `create` cannot
+    // require isDriver(), because the `driver` claim is only granted by
+    // onDriverProfileCreated once this document already exists — gating
+    // creation on the claim it's supposed to unlock is an unreachable
+    // chicken-and-egg condition. isOwner(uid) is sufficient here since a
+    // create can only ever target the caller's own doc id.
     match /drivers/{uid} {
       allow read: if isOwner(uid) || isOrganization() || isSignedIn();
-      allow create: if isOwner(uid) && isDriver();
+      allow create: if isOwner(uid);
       allow update: if isOrganization()
                     || (isOwner(uid) && isDriver()
                         && !request.resource.data.diff(resource.data)
