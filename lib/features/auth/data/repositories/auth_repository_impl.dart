@@ -132,6 +132,9 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<UserRole?> getCurrentRole() => _source.getCachedRoleClaim();
 
   @override
+  Future<UserRole?> refreshRoleClaim() => _source.refreshRoleClaim();
+
+  @override
   Future<Either<Failure, Unit>> signOut() async {
     try {
       await _source.signOut();

@@ -43,4 +43,13 @@ abstract class AuthRepository {
   /// stale/null value for the few seconds right after sign-up before the
   /// claim has propagated; use [waitForRoleClaim] at sign-up time instead.
   Future<UserRole?> getCurrentRole();
+
+  /// Single forced ID-token fetch (bypasses the local cache), returning
+  /// whatever `role` claim Firebase actually has right now. Unlike
+  /// [waitForRoleClaim] this makes exactly one network round trip instead
+  /// of retrying for several seconds — use it when [getCurrentRole]
+  /// returns null and the caller needs an authoritative answer before
+  /// making a routing decision (e.g. a cold-started session whose locally
+  /// persisted token predates a role claim that was already granted).
+  Future<UserRole?> refreshRoleClaim();
 }

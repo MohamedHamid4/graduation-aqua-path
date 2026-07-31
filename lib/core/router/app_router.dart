@@ -126,8 +126,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       // ── Route guards: deny access when the claim doesn't match ───────
+      //
+      // `role` above came from the cheap cached-token read — which can be
+      // null not only right after sign-up, but also on a cold restart if
+      // the locally persisted ID token predates a role claim that was
+      // already granted (e.g. a driver's claim was set last session, but
+      // the token cached on disk is the pre-claim one). Evicting someone
+      // out of a role-scoped area on a merely-unresolved role — rather
+      // than a CONFIRMED mismatch — is exactly how a real driver used to
+      // get silently bounced into the resident shell on cold start. Every
+      // eviction below now re-resolves an unresolved role authoritatively
+      // (forced token refresh, then the pre-migration Firestore signal)
+      // before deciding, instead of defaulting straight to "not this
+      // role".
       if (onOrgScreen && role != UserRole.organization) {
-        return RouteNames.orgLogin;
+        role ??= await _resolveRoleFallback(authRepo, driverRepo, storage);
+        if (role != UserRole.organization) {
+          return RouteNames.orgLogin;
+        }
       }
       if (onDriverScreen) {
         final onDriverRegisterScreen = loc == RouteNames.driverRegister;
@@ -141,7 +157,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         // own registration screen: GoRouter re-evaluates `redirect` on
         // the resolved location too, so the redirect-to-driverRegister
         // above would immediately be followed by this guard bouncing
-        // them straight back out.
+        // them straight back out. Only try to resolve the ambiguity when
+        // it's NOT that brand-new-signup case.
+        if (role == null && !onDriverRegisterScreen) {
+          role = await _resolveRoleFallback(authRepo, driverRepo, storage);
+        }
         final isNewDriverCompletingRegistration =
             role == null && onDriverRegisterScreen;
         if (role != UserRole.driver && !isNewDriverCompletingRegistration) {
@@ -337,10 +357,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Transitional fallback for the narrow window right after sign-up (claim
-/// not yet visible) and for any pre-existing accounts created before the
-/// custom-claims migration. Never used for Organization — that role has no
-/// legacy path to fall back to.
+/// Resolves a signed-in user's role when the cheap cached-claim read came
+/// back null — covering both the narrow window right after sign-up (claim
+/// not yet visible) and a cold-started session whose locally persisted ID
+/// token predates a role claim that was already granted.
+///
+/// Tries, in order:
+///  1. A forced ID-token refresh — one network round trip, but
+///     authoritative, and directly resolves the stale-cached-token case.
+///  2. The pre-migration Firestore `drivers/{uid}` existence check, for
+///     accounts created before the custom-claims migration and therefore
+///     never carrying a `driver` claim at all.
+///  3. `pendingAccountRole`, set locally at sign-up time before the claim
+///     exists anywhere yet.
 Future<UserRole?> _resolveRoleFallback(
   AuthRepository authRepo,
   DriverRepository driverRepo,
@@ -348,6 +377,8 @@ Future<UserRole?> _resolveRoleFallback(
 ) async {
   final uid = authRepo.currentUser?.uid;
   if (uid == null) return null;
+  final refreshed = await authRepo.refreshRoleClaim();
+  if (refreshed != null) return refreshed;
   if (await driverRepo.isDriver(uid)) return UserRole.driver;
   final pendingRole = await storage.pendingAccountRole;
   if (pendingRole == 'resident') return UserRole.resident;

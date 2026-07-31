@@ -41,23 +41,42 @@ class _SplashScreenState extends State<SplashScreen> {
       return;
     }
 
-    // Organization accounts have their own portal — resolve the role from
-    // the cached ID-token claim before touching any driver/resident paths.
-    final role = await authRepo.getCurrentRole();
+    // Cached claim first (fast, no network) — covers the overwhelmingly
+    // common case of a returning session whose token already reflects
+    // their real role.
+    var role = await authRepo.getCurrentRole();
+
+    // The cached ID token can be stale — e.g. it was persisted before a
+    // driver/organization claim was actually granted, or simply before
+    // the app was last closed. Never treat an unresolved role here as
+    // "must be a resident": a forced refresh is one network round trip
+    // and is authoritative. This is the fix for a driver whose cached
+    // token predated their claim falling straight through to the
+    // resident flow on a cold restart.
+    if (!mounted) return;
+    role ??= await authRepo.refreshRoleClaim();
+
+    if (!mounted) return;
     if (role == UserRole.organization) {
-      if (mounted) context.go(RouteNames.orgDashboard);
+      context.go(RouteNames.orgDashboard);
+      return;
+    }
+    if (role == UserRole.driver) {
+      context.go('/driver/schedule');
       return;
     }
 
     final storage = GetIt.I<SecureStorageService>();
 
-    final isDriver = await GetIt.I<DriverRepository>().isDriver(user.uid);
-
-    if (!mounted) return;
-
-    if (isDriver) {
-      context.go('/driver/schedule');
-      return;
+    if (role == null) {
+      // Covers pre-migration driver accounts that never got a claim at
+      // all — the one case a token refresh can't resolve.
+      final isDriver = await GetIt.I<DriverRepository>().isDriver(user.uid);
+      if (!mounted) return;
+      if (isDriver) {
+        context.go('/driver/schedule');
+        return;
+      }
     }
 
     final pendingRole = await storage.pendingAccountRole;
