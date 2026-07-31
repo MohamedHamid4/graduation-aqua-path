@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/router/route_names.dart';
 import '../../../shared/providers/household_provider.dart';
 import '../../../shared/providers/reminder_prefs_provider.dart';
 import '../../../shared/services/priority_service.dart';
@@ -323,7 +324,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         children: [
           GestureDetector(
             onTap: () {
-              if (Navigator.canPop(context)) Navigator.pop(context);
+              // Reached both by push (from Settings → history) and by go()
+              // straight after registration/onboarding — in the latter
+              // case there's nothing to pop, so fall back to the map, same
+              // destination as the "متابعة إلى الخريطة" button below.
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else {
+                context.go(RouteNames.home);
+              }
             },
             child: Container(
               width: 36.w,

@@ -76,15 +76,20 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.bgPrimary,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_rounded,
-            color: AppColors.textPrimary,
-          ),
-          onPressed: () {
-            if (Navigator.canPop(context)) Navigator.pop(context);
-          },
-        ),
+        // Reached both as a mandatory first-run step (context.go — nothing
+        // to pop back to) and pushed from Settings → "تعديل بيانات الأسرة"
+        // (something to pop to). A visible back arrow that silently does
+        // nothing in the first case is worse than no arrow at all, so only
+        // show it when there's somewhere for it to actually go.
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios_rounded,
+                  color: AppColors.textPrimary,
+                ),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
         title: Text(
           AppStrings.regTitle,
           style: GoogleFonts.cairo(
