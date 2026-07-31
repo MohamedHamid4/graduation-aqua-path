@@ -136,11 +136,17 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                   fontSize: 14.sp,
                   color: AppColors.textMuted,
                 ),
-                icon: const Icon(
+                // `icon:` renders outside the decoration's box (and with
+                // no contentPadding, at inconsistent height vs. the input
+                // text) — `prefixIcon:` is what every other card-styled
+                // field in this app actually uses, including this same
+                // field's onboarding-flow counterpart.
+                prefixIcon: const Icon(
                   Icons.family_restroom_rounded,
                   color: AppColors.primary,
                 ),
                 border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 16.h),
               ),
             ),
           ),

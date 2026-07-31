@@ -77,8 +77,16 @@ class RegistrationNotifier extends Notifier<RegistrationFormState> {
   RegistrationFormState build() => const RegistrationFormState();
 
   void setFamilyName(String value) {
+    // Deliberately NOT trimmed here: RegistrationScreen's edit flow syncs
+    // its TextEditingController back from `state.familyName` whenever they
+    // differ (to support pre-filling existing data), so trimming on every
+    // keystroke made the controller fight the user — typing a space
+    // between words in a multi-word family name got silently deleted the
+    // instant it was typed, since the trimmed state no longer matched the
+    // controller's raw (still-has-the-trailing-space) text. Trimming
+    // happens once, at the actual validation/save boundary instead.
     state = state.copyWith(
-      familyName: value.trim(),
+      familyName: value,
       clearValidation: true,
     );
   }
@@ -138,6 +146,19 @@ class RegistrationNotifier extends Notifier<RegistrationFormState> {
     );
   }
 
+  /// Used by the onboarding wizard to block advancing off the family-name
+  /// step until it's filled in. Shares the exact message (and the same
+  /// inline banner display) [_validate] uses at final submission, instead
+  /// of a separate ad hoc SnackBar with its own hardcoded copy.
+  bool validateFamilyName() {
+    if (state.familyName.trim().isEmpty) {
+      state = state.copyWith(validationError: 'يرجى إدخال اسم العائلة');
+      return false;
+    }
+    state = state.copyWith(clearValidation: true);
+    return true;
+  }
+
   bool _validate() {
     if (state.familyName.trim().isEmpty) {
       state = state.copyWith(
@@ -177,9 +198,15 @@ class RegistrationNotifier extends Notifier<RegistrationFormState> {
 
     state = state.copyWith(isSubmitting: true, clearError: true);
 
+    // Trimmed once, here at the save boundary — kept untrimmed in state
+    // itself so the edit-flow controller sync in RegistrationScreen
+    // doesn't fight the user while they're still typing (see
+    // setFamilyName).
+    final familyName = state.familyName.trim();
+
     final vulnerabilityScore = HouseholdModel(
       id: uid,
-      familyName: state.familyName,
+      familyName: familyName,
       areaName: state.selectedArea,
       householdSize: state.householdSize,
       hasElderly: state.hasElderly,
@@ -196,7 +223,7 @@ class RegistrationNotifier extends Notifier<RegistrationFormState> {
 
     final household = HouseholdModel(
       id: uid,
-      familyName: state.familyName,
+      familyName: familyName,
       areaName: state.selectedArea,
       householdSize: state.householdSize,
       hasElderly: state.hasElderly,
