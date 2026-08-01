@@ -3,6 +3,7 @@ import 'package:get_it/get_it.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/errors/failure_messages.dart';
+import '../../../../core/utils/validators.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../domain/entities/driver_profile.dart';
 import '../../domain/repositories/driver_repository.dart';
@@ -95,8 +96,9 @@ class DriverRegistrationNotifier extends Notifier<DriverRegistrationState> {
       state = state.copyWith(validationError: 'يرجى إدخال اسم العائلة');
       return false;
     }
-    if (state.phone.trim().isEmpty) {
-      state = state.copyWith(validationError: 'يرجى إدخال رقم الهاتف');
+    final phoneError = Validators.phoneError(state.phone);
+    if (phoneError != null) {
+      state = state.copyWith(validationError: phoneError);
       return false;
     }
     if (state.truckPlateNumber.trim().isEmpty) {

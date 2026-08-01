@@ -120,6 +120,26 @@ void main() {
       );
       verifyNever(() => mockDriverRepo.registerDriverProfile(any()));
     });
+
+    test('a phone number that is not exactly 10 digits blocks submit',
+        () async {
+      final container = makeContainer();
+      final notifier = container.read(driverRegistrationProvider.notifier);
+      notifier.setFirstName('أحمد');
+      notifier.setLastName('محمد');
+      notifier.setPhone('05912345'); // 8 digits — too short
+      notifier.setTruckPlateNumber('12-345-67');
+      notifier.setLicenseNumber('LIC-9988');
+      notifier.setAssignedArea('الشجاعية');
+
+      await notifier.submit();
+
+      expect(
+        container.read(driverRegistrationProvider).validationError,
+        isNotNull,
+      );
+      verifyNever(() => mockDriverRepo.registerDriverProfile(any()));
+    });
   });
 
   group('DriverRegistrationNotifier — submit', () {

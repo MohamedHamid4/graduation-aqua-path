@@ -40,4 +40,20 @@ abstract final class Validators {
     }
     return null;
   }
+
+  static final RegExp _digitsOnly = RegExp(r'^[0-9]+$');
+
+  /// Returns the Arabic error message if [phone] isn't exactly 10 digits
+  /// (digits only — no spaces, dashes, or a leading `+`/country code), or
+  /// `null` if it's valid. Every phone field in the app (resident,
+  /// driver, organization, and any profile-edit form) shares this single
+  /// check instead of each screen re-implementing its own.
+  static String? phoneError(String phone) {
+    final trimmed = phone.trim();
+    if (trimmed.isEmpty) return FailureMessages.phoneRequired;
+    if (trimmed.length != 10 || !_digitsOnly.hasMatch(trimmed)) {
+      return FailureMessages.phoneInvalid;
+    }
+    return null;
+  }
 }

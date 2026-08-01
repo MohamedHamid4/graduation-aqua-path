@@ -68,4 +68,9 @@ abstract final class FailureMessages {
 
   static const String nameRequired = 'يرجى إدخال الاسم الكامل';
   static const String passwordsDoNotMatch = 'كلمتا المرور غير متطابقتين';
+
+  // ── Phone — shared by every phone field in the app (see
+  // Validators.phoneError) ───────────────────────────────────────────────
+  static const String phoneRequired = 'يرجى إدخال رقم الهاتف';
+  static const String phoneInvalid = 'يجب أن يتكون رقم الهاتف من 10 أرقام فقط';
 }
