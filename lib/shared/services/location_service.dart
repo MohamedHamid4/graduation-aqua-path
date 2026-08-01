@@ -1,6 +1,39 @@
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
+/// Why an explicit, user-triggered location request ([LocationService.
+/// requestCurrentFix]) could not return a real device fix.
+enum LocationFailure {
+  serviceDisabled,
+  permissionDenied,
+  permissionDeniedForever,
+  unavailable,
+}
+
+/// Result of an explicit "locate me" request. Unlike [LocationService.
+/// getCurrentPosition] (which silently substitutes the Gaza fallback so
+/// background calculations like ETA keep working), this never hides a
+/// failure — the caller needs to know precisely why a fix couldn't be
+/// obtained so it can prompt the user correctly instead of the map
+/// silently doing nothing.
+class LocationFix {
+  final double? lat;
+  final double? lng;
+  final LocationFailure? failure;
+
+  const LocationFix.success(double latitude, double longitude)
+      : lat = latitude,
+        lng = longitude,
+        failure = null;
+
+  const LocationFix.failed(LocationFailure reason)
+      : lat = null,
+        lng = null,
+        failure = reason;
+
+  bool get isSuccess => failure == null;
+}
+
 /// Wraps the device geolocation APIs with permission handling.
 ///
 /// Falls back to Gaza City's centre coordinates whenever location
@@ -38,6 +71,42 @@ class LocationService {
       return (lat: position.latitude, lng: position.longitude);
     } on Exception {
       return (lat: fallbackLat, lng: fallbackLng);
+    }
+  }
+
+  /// Requests one fresh device fix for an explicit user action (e.g. the
+  /// map's "my location" button). Always takes a live GPS reading —
+  /// never a cached/stale value — and reports the precise reason on
+  /// failure instead of substituting the Gaza fallback, so the caller can
+  /// show the user something actionable (enable GPS / grant permission)
+  /// rather than the map appearing to just do nothing.
+  Future<LocationFix> requestCurrentFix() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return const LocationFix.failed(LocationFailure.serviceDisabled);
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied) {
+      return const LocationFix.failed(LocationFailure.permissionDenied);
+    }
+    if (permission == LocationPermission.deniedForever) {
+      return const LocationFix.failed(LocationFailure.permissionDeniedForever);
+    }
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+      return LocationFix.success(position.latitude, position.longitude);
+    } on Exception {
+      return const LocationFix.failed(LocationFailure.unavailable);
     }
   }
 

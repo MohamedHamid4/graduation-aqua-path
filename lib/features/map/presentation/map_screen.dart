@@ -13,6 +13,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../shared/providers/notification_prefs_provider.dart';
+import '../../../shared/services/location_service.dart';
 import '../../parking/domain/entities/parking_spot.dart';
 import '../../parking/presentation/providers/parking_spot_providers.dart';
 import '../../trucks/domain/entities/truck.dart';
@@ -171,16 +172,29 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             right: 16.w,
             child: GestureDetector(
               onTap: () async {
-                final loc = ref.read(userLocationProvider).valueOrNull;
-                if (loc == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تعذّر تحديد موقعك')),
+                final messenger = ScaffoldMessenger.of(context);
+                // Always takes a fresh live fix rather than reusing
+                // userLocationProvider's cached one-shot value — a
+                // "locate me" tap must reflect where the device is *now*,
+                // and must surface *why* it failed (GPS off / permission
+                // denied) instead of silently re-centering on the same
+                // stale fallback point, which looked like the button was
+                // doing nothing.
+                final fix = await ref
+                    .read(locationServiceProvider)
+                    .requestCurrentFix();
+                if (!fix.isSuccess) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(_locationErrorMessage(fix.failure!))),
                   );
                   return;
                 }
                 final controller = await _mapController.future;
                 await controller.animateCamera(
-                  CameraUpdate.newLatLng(LatLng(loc.lat, loc.lng)),
+                  CameraUpdate.newLatLngZoom(
+                    LatLng(fix.lat!, fix.lng!),
+                    16,
+                  ),
                 );
               },
               child: Container(
@@ -210,6 +224,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ],
       ),
     );
+  }
+}
+
+String _locationErrorMessage(LocationFailure failure) {
+  switch (failure) {
+    case LocationFailure.serviceDisabled:
+      return AppStrings.locationServiceDisabled;
+    case LocationFailure.permissionDenied:
+      return AppStrings.locationPermissionDenied;
+    case LocationFailure.permissionDeniedForever:
+      return AppStrings.locationPermissionDeniedForever;
+    case LocationFailure.unavailable:
+      return AppStrings.locationUnavailable;
   }
 }
 

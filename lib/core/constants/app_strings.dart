@@ -106,6 +106,15 @@ abstract final class AppStrings {
   static const reportsExportExcelLabel = 'Excel';
   static const reportsExportExcelDesc = 'جدول بيانات ‎.xlsx بأعمدة رقمية';
 
+  // ── Location ──────────────────────────────────────────────────────────
+  static const locationServiceDisabled =
+      'يرجى تفعيل خدمة الموقع (GPS) من إعدادات الجهاز';
+  static const locationPermissionDenied =
+      'يرجى منح إذن الوصول إلى الموقع لعرضه على الخريطة';
+  static const locationPermissionDeniedForever =
+      'تم رفض إذن الموقع بشكل دائم، يرجى تفعيله من إعدادات التطبيق';
+  static const locationUnavailable = 'تعذّر تحديد موقعك، حاول مرة أخرى';
+
   // ── Areas ─────────────────────────────────────────────────────────────
   static const List<String> gazaAreas = [
     'الشجاعية',
