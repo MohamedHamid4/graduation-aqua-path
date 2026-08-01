@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_it/get_it.dart';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/errors/failure_messages.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../domain/entities/driver_profile.dart';
@@ -67,7 +68,8 @@ class DriverRegistrationState {
 
 class DriverRegistrationNotifier extends Notifier<DriverRegistrationState> {
   @override
-  DriverRegistrationState build() => const DriverRegistrationState();
+  DriverRegistrationState build() =>
+      DriverRegistrationState(assignedArea: AppStrings.gazaAreas.first);
 
   void setFirstName(String v) =>
       state = state.copyWith(firstName: v, clearValidation: true);

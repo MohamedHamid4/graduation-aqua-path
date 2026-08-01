@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../shared/widgets/area_dropdown.dart';
 import 'providers/registration_provider.dart';
 
 class RegistrationScreen extends ConsumerStatefulWidget {
@@ -153,7 +154,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
           SizedBox(height: 20.h),
           _sectionLabel(AppStrings.regAreaLabel),
           SizedBox(height: 8.h),
-          RegistrationAreaDropdown(
+          AreaDropdown(
             value: state.selectedArea,
             items: AppStrings.gazaAreas,
             onChanged: notifier.setArea,
@@ -343,53 +344,6 @@ class _HeaderCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class RegistrationAreaDropdown extends StatelessWidget {
-  final String value;
-  final List<String> items;
-  final ValueChanged<String> onChanged;
-
-  const RegistrationAreaDropdown({
-    super.key,
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14.w),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderDefault),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          isExpanded: true,
-          dropdownColor: AppColors.bgCard,
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: AppColors.primary,
-          ),
-          style: GoogleFonts.cairo(
-            fontSize: 14.sp,
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w500,
-          ),
-          items: items
-              .map((a) => DropdownMenuItem(value: a, child: Text(a)))
-              .toList(),
-          onChanged: (v) {
-            if (v != null) onChanged(v);
-          },
-        ),
       ),
     );
   }

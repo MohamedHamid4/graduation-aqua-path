@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_strings.dart';
 import '../../../core/widgets/inline_error_banner.dart';
+import '../../../shared/widgets/area_dropdown.dart';
 import 'providers/driver_registration_provider.dart';
 
 /// Driver-side onboarding form — collects the truck and license details
@@ -28,7 +30,6 @@ class _DriverRegisterScreenState extends ConsumerState<DriverRegisterScreen> {
   final _plateCtrl = TextEditingController();
   final _licenseCtrl = TextEditingController();
   final _capacityCtrl = TextEditingController(text: '10000');
-  final _areaCtrl = TextEditingController();
 
   @override
   void dispose() {
@@ -38,7 +39,6 @@ class _DriverRegisterScreenState extends ConsumerState<DriverRegisterScreen> {
     _plateCtrl.dispose();
     _licenseCtrl.dispose();
     _capacityCtrl.dispose();
-    _areaCtrl.dispose();
     super.dispose();
   }
 
@@ -165,10 +165,18 @@ class _DriverRegisterScreenState extends ConsumerState<DriverRegisterScreen> {
             onChanged: notifier.setLicenseNumber,
           ),
           SizedBox(height: 14.h),
-          _field(
-            label: 'المنطقة المكلّف بها',
-            controller: _areaCtrl,
-            icon: Icons.map_outlined,
+          Text(
+            'المنطقة المكلّف بها',
+            style: GoogleFonts.cairo(
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          SizedBox(height: 8.h),
+          AreaDropdown(
+            value: state.assignedArea,
+            items: AppStrings.gazaAreas,
             onChanged: notifier.setAssignedArea,
           ),
           SizedBox(height: 14.h),
