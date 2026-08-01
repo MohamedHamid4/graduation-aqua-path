@@ -123,6 +123,16 @@ class RegistrationNotifier extends Notifier<RegistrationFormState> {
     final uid = GetIt.I<AuthRepository>().currentUser?.uid;
     if (uid == null) return;
 
+    // `registrationProvider` is a long-lived singleton, not scoped to
+    // this screen's lifetime — a prior successful submit (e.g. during
+    // first-run onboarding) leaves `isSuccess: true` sitting in its state
+    // forever. Without clearing it here, the copyWith below carries that
+    // stale flag into a brand-new state object; RegistrationScreen's
+    // ref.listen sees `isSuccess == true` on that new object and
+    // immediately fires its "just saved" pop + snackbar — before the
+    // user has touched anything on a re-opened edit screen.
+    state = state.copyWith(isSuccess: false);
+
     final result = await GetIt.I<HouseholdRepository>().getHousehold(uid);
 
     result.fold(

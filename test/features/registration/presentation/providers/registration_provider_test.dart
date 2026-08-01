@@ -227,6 +227,52 @@ void main() {
 
       verifyNever(() => mockHouseholdRepo.getHousehold(any()));
     });
+
+    test(
+        'clears a stale isSuccess left over from an earlier submit before '
+        'reopening for edit (regression: re-entering the edit screen no '
+        'longer auto-pops with a false "updated" message)', () async {
+      when(() => mockHouseholdRepo.getHousehold('resident-uid-1')).thenAnswer(
+        (_) async => Right(
+          HouseholdModel(
+            id: 'resident-uid-1',
+            familyName: 'عائلة تجريبية',
+            areaName: 'خان يونس',
+            householdSize: 7,
+            registeredAt: DateTime(2024),
+          ),
+        ),
+      );
+      when(() => mockHouseholdRepo.saveHousehold(
+            uid: any(named: 'uid'),
+            household: any(named: 'household'),
+          )).thenAnswer((_) async => Right(unit));
+      when(() => mockStorage.setRegistrationComplete(
+            householdId: any(named: 'householdId'),
+          )).thenAnswer((_) async {});
+      when(() => mockStorage.saveArea(any())).thenAnswer((_) async {});
+      when(() => mockPriority.calculatePriority(
+            householdCount: any(named: 'householdCount'),
+            vulnerabilityScore: any(named: 'vulnerabilityScore'),
+            daysSinceServed: any(named: 'daysSinceServed'),
+          )).thenReturn(10);
+
+      final container = makeContainer();
+      final notifier = container.read(registrationProvider.notifier);
+
+      // Simulate a prior successful submit earlier in the app session
+      // (e.g. during first-run onboarding) — this is what leaves
+      // isSuccess stuck true on this long-lived provider.
+      notifier.setFamilyName('عائلة تجريبية');
+      await notifier.submit();
+      expect(container.read(registrationProvider).isSuccess, true);
+
+      // Re-opening the edit screen later calls this — it must not carry
+      // the stale isSuccess forward into the new state it emits.
+      await notifier.loadExistingIfAny();
+
+      expect(container.read(registrationProvider).isSuccess, false);
+    });
   });
 
   group('RegistrationNotifier — submission', () {
