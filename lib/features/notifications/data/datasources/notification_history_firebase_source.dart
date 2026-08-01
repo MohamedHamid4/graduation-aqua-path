@@ -12,9 +12,19 @@ class NotificationHistoryFirebaseSource {
       .doc(uid)
       .collection('items');
 
+  /// Capped at the most recent [_historyLimit] items — this subcollection
+  /// grows forever (one permanent doc per push notification ever
+  /// received), and without a limit every new arrival re-fetches,
+  /// re-parses, and re-sorts the entire history to recompute something as
+  /// small as the unread badge count shown in the bottom nav on every
+  /// screen. 100 is far more than anyone scrolls through in the
+  /// notifications list.
+  static const int _historyLimit = 100;
+
   Stream<List<NotificationItem>> watchNotifications(String uid) {
     return _itemsRef(uid)
         .orderBy('receivedAt', descending: true)
+        .limit(_historyLimit)
         .snapshots()
         .map(
           (snap) => snap.docs
