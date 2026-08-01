@@ -33,10 +33,19 @@
         android:name="${applicationName}"
         android:icon="@drawable/launch_background">
 
-        <!-- Google Maps API key — replace with a real key before release -->
+        <!-- Google Maps API key — injected at build time from
+             android/local.properties (`maps.apiKey=...`, gitignored) or the
+             MAPS_API_KEY environment variable, see app/build.gradle.kts.
+             Falls back to the previous placeholder dev key if neither is
+             set. For a release build, this MUST be a real key with "Maps
+             SDK for Android" enabled, billing on, and restricted to this
+             app's release-signing SHA-1 + package name in Google Cloud
+             Console — an unauthorized/placeholder key produces a blank/grey
+             basemap with markers still visible (Bug 2 symptom), since
+             overlays render client-side independent of tile authorization. -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAyFT3HMBXZfMCa34A53TRujnjrS3AssKE" />
+            android:value="${mapsApiKey}" />
 
         <activity
             android:name=".MainActivity"

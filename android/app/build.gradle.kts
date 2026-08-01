@@ -1,9 +1,27 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
 }
+
+// Google Maps API key: read from local.properties (gitignored) or the
+// MAPS_API_KEY environment variable (e.g. a CI secret for release builds),
+// so a real, properly-restricted key never needs to be committed to
+// source control. Falls back to the placeholder dev key checked in
+// previously so existing local setups keep working until someone sets
+// this — see AndroidManifest.xml's meta-data placeholder.
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use { localProperties.load(it) }
+}
+val mapsApiKey: String =
+    (localProperties.getProperty("maps.apiKey")
+        ?: System.getenv("MAPS_API_KEY")
+        ?: "AIzaSyAyFT3HMBXZfMCa34A53TRujnjrS3AssKE")
 
 android {
     namespace = "com.aquapath.app"
@@ -28,6 +46,7 @@ android {
         versionCode = 1
         versionName = "1.0.0"
         multiDexEnabled = true
+        manifestPlaceholders["mapsApiKey"] = mapsApiKey
     }
 
     signingConfigs {
