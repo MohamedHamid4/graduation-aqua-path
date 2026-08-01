@@ -68,14 +68,21 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
         _confirmError == null;
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_validate()) return;
     // Persisted BEFORE the Firebase call so the router's redirect logic
     // can read it the instant auth state flips to signed-in — Firestore
     // has no driver/household profile yet at that point to tell the two
     // apart, so this local flag is the only signal available in time.
-    GetIt.I<SecureStorageService>()
+    // Must be awaited: an un-awaited write races the Firebase sign-up
+    // call, and if the app is killed before the disk write lands (e.g.
+    // right after a brand-new driver signs up and backs out before
+    // finishing their registration form), the splash/router fallback
+    // reads this flag back as unset and resumes the user into the
+    // resident onboarding flow instead of driver registration.
+    await GetIt.I<SecureStorageService>()
         .setPendingAccountRole(_isDriver ? 'driver' : 'resident');
+    if (!mounted) return;
     ref.read(authFormProvider.notifier).signUp(
           email: _emailCtrl.text,
           password: _passwordCtrl.text,

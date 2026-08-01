@@ -34,7 +34,19 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     final authRepo = GetIt.I<AuthRepository>();
-    final user = authRepo.currentUser;
+
+    // Firebase Auth's authoritative signal, not the synchronous
+    // `currentUser` getter: `currentUser` can transiently read null on a
+    // cold start, before the SDK finishes restoring a persisted session
+    // from disk (slower on some devices / right after a reboot) —
+    // reading it too early used to bounce a genuinely signed-in user to
+    // the login screen. `authStateChanges`'s first emission is
+    // guaranteed to reflect the actually-restored session, however long
+    // that takes, instead of gambling that the branding delay above was
+    // always long enough.
+    final user = await authRepo.authStateChanges.first;
+
+    if (!mounted) return;
 
     if (user == null) {
       if (mounted) context.go(RouteNames.login);
