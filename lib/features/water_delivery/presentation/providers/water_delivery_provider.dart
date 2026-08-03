@@ -2,26 +2,34 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_it/get_it.dart';
 
-import '../../../../core/security/secure_storage_service.dart';
+import '../../../../shared/providers/household_provider.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../../trucks/domain/entities/truck.dart';
 import '../../../trucks/presentation/providers/truck_providers.dart';
 import '../../domain/entities/water_delivery.dart';
 import '../../domain/repositories/water_delivery_repository.dart';
 
-/// Provider for the user's saved area from registration. Deliveries are
-/// now addressed by area (driver-confirmed, not resident-self-reported),
-/// so this is also what the delivery history/total streams key off.
-final userAreaProvider = FutureProvider.autoDispose<String?>((ref) async {
-  final savedArea = await GetIt.I<SecureStorageService>().savedArea;
-  return savedArea?.trim();
+/// The resident's area, read live from `households/{uid}` — NOT from a
+/// locally cached copy (SecureStorage) — because the water_deliveries
+/// Firestore rule re-derives the caller's area from that same document
+/// (`get(households/$(uid)).data.areaName`) to authorize the query. If the
+/// client filtered by a stale cached area that no longer matches the live
+/// document (edited household, org reassignment, cache never synced),
+/// every document would fail that per-doc check and Firestore would reject
+/// the *entire* list query with permission-denied — which surfaced to
+/// residents as a bogus "check your internet connection" error. Reading
+/// the same document the rule checks against makes the two impossible to
+/// disagree.
+final userAreaProvider = Provider.autoDispose<String?>((ref) {
+  final household = ref.watch(currentHouseholdProvider).valueOrNull;
+  final area = household?.areaName.trim();
+  return (area == null || area.isEmpty) ? null : area;
 });
 
 /// Real-time stream of deliveries recorded for the resident's area.
 final areaWaterDeliveriesProvider =
     StreamProvider.autoDispose<List<WaterDelivery>>((ref) {
-  final areaAsync = ref.watch(userAreaProvider);
-  final area = areaAsync.valueOrNull;
+  final area = ref.watch(userAreaProvider);
 
   if (area == null || area.isEmpty) {
     return Stream.value(const []);
@@ -31,7 +39,7 @@ final areaWaterDeliveriesProvider =
         (either) => either.fold(
           (failure) {
             debugPrint('WATER DELIVERY HISTORY ERROR: ${failure.message}');
-            throw Exception(failure.message);
+            throw failure;
           },
           (deliveries) => deliveries,
         ),
@@ -40,8 +48,7 @@ final areaWaterDeliveriesProvider =
 
 /// Real-time stream of the total water delivered to the resident's area.
 final areaWaterTotalProvider = StreamProvider.autoDispose<double>((ref) {
-  final areaAsync = ref.watch(userAreaProvider);
-  final area = areaAsync.valueOrNull;
+  final area = ref.watch(userAreaProvider);
 
   if (area == null || area.isEmpty) {
     return Stream.value(0);
@@ -51,7 +58,7 @@ final areaWaterTotalProvider = StreamProvider.autoDispose<double>((ref) {
         (either) => either.fold(
           (failure) {
             debugPrint('WATER DELIVERY TOTAL ERROR: ${failure.message}');
-            throw Exception(failure.message);
+            throw failure;
           },
           (total) => total,
         ),
@@ -61,11 +68,10 @@ final areaWaterTotalProvider = StreamProvider.autoDispose<double>((ref) {
 /// Finds the first active truck serving the user's registered area.
 final activeTruckForUserProvider = Provider.autoDispose<Truck?>((ref) {
   final trucksAsync = ref.watch(trucksStreamProvider);
-  final userAreaAsync = ref.watch(userAreaProvider);
+  final rawArea = ref.watch(userAreaProvider);
 
   return trucksAsync.maybeWhen(
     data: (trucks) {
-      final rawArea = userAreaAsync.valueOrNull;
       final area = rawArea?.trim();
 
       if (area == null || area.isEmpty) {

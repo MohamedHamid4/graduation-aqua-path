@@ -31,6 +31,23 @@ class UnknownFailure extends Failure {
   const UnknownFailure([super.message = 'خطأ غير معروف']);
 }
 
+/// The backend rejected the request (Firestore/Storage security rules,
+/// missing custom claim, etc). Distinct from [NetworkFailure]/[ServerFailure]
+/// so the UI never tells the user to "check their internet connection"
+/// when the real problem is that they aren't allowed to do this.
+class PermissionFailure extends Failure {
+  /// Raw Firebase error code, e.g. 'permission-denied'. Kept for logging —
+  /// never shown to the user directly.
+  final String code;
+  const PermissionFailure(
+    this.code, [
+    super.message = 'ليس لديك صلاحية للقيام بهذا الإجراء.',
+  ]);
+
+  @override
+  List<Object> get props => [message, code];
+}
+
 /// Authentication-specific failure. Carries the original Firebase Auth
 /// error code (e.g. 'wrong-password', 'email-already-in-use') so
 /// [FailureMessages] can map it to a precise Arabic message.

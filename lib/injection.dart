@@ -145,14 +145,12 @@ Future<void> configureDependencies() async {
   getIt.registerLazySingleton<DriverRepository>(
     () => DriverRepositoryImpl(
       getIt<DriverFirebaseSource>(),
-      connectivity: getIt<ConnectivityService>(),
       offlineQueue: getIt<OfflineWriteQueueService>(),
     ),
   );
   getIt.registerLazySingleton<HouseholdRepository>(
     () => HouseholdRepositoryImpl(
       getIt<HouseholdFirebaseSource>(),
-      connectivity: getIt<ConnectivityService>(),
       offlineQueue: getIt<OfflineWriteQueueService>(),
     ),
   );

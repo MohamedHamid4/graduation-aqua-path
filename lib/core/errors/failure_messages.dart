@@ -7,9 +7,16 @@ import 'failures.dart';
 abstract final class FailureMessages {
   static String fromFailure(Failure failure) {
     return switch (failure) {
-      ServerFailure() =>
-        'تعذّر الاتصال بالخادم. تحقق من اتصالك بالإنترنت وحاول مجدداً.',
+      // Only a real connectivity/reachability problem should ever tell the
+      // user to check their internet connection.
       NetworkFailure() => 'لا يوجد اتصال بالإنترنت. يتم عرض آخر بيانات متاحة.',
+      PermissionFailure() => 'ليس لديك صلاحية للوصول إلى هذه البيانات.',
+      // A genuine server-side failure — NOT a network issue, so the message
+      // must not claim it's the user's connection. Prefer the specific
+      // message the repository captured (e.g. the real Firebase error)
+      // over a generic one.
+      ServerFailure(:final message) =>
+        message.isNotEmpty ? message : 'حدث خطأ في الخادم. حاول مجدداً.',
       CacheFailure() => 'تعذّر قراءة البيانات المحفوظة محلياً.',
       LocationFailure() => 'تعذّر تحديد موقعك. تأكد من تفعيل خدمة الموقع.',
       NotFoundFailure() => 'الشاحنة المطلوبة غير موجودة.',

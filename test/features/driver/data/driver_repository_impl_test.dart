@@ -1,7 +1,7 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:aquapath/core/network/connectivity_service.dart';
 import 'package:aquapath/core/offline/offline_write_queue_service.dart';
 import 'package:aquapath/features/driver/data/datasources/driver_firebase_source.dart';
 import 'package:aquapath/features/driver/data/repositories/driver_repository_impl.dart';
@@ -9,27 +9,19 @@ import 'package:aquapath/features/driver/domain/entities/driver_profile.dart';
 
 class MockDriverFirebaseSource extends Mock implements DriverFirebaseSource {}
 
-class MockConnectivityService extends Mock implements ConnectivityService {}
-
 class MockOfflineWriteQueueService extends Mock
     implements OfflineWriteQueueService {}
 
 void main() {
   late MockDriverFirebaseSource mockSource;
-  late MockConnectivityService mockConnectivity;
   late MockOfflineWriteQueueService mockOfflineQueue;
   late DriverRepositoryImpl repo;
 
   setUp(() {
     mockSource = MockDriverFirebaseSource();
-    mockConnectivity = MockConnectivityService();
     mockOfflineQueue = MockOfflineWriteQueueService();
-    // These tests exercise the existing online behavior; offline
-    // queueing has its own dedicated group below.
-    when(() => mockConnectivity.isConnected).thenAnswer((_) async => true);
     repo = DriverRepositoryImpl(
       mockSource,
-      connectivity: mockConnectivity,
       offlineQueue: mockOfflineQueue,
     );
   });
@@ -106,9 +98,15 @@ void main() {
       registeredAt: DateTime(2026, 1, 1),
     );
 
-    test('queues the write instead of calling the source when offline',
-        () async {
-      when(() => mockConnectivity.isConnected).thenAnswer((_) async => false);
+    test(
+        'queues the write when the actual write fails for a connectivity '
+        'reason', () async {
+      // The write is always attempted first (not gated on a pre-check) —
+      // only a genuine connectivity failure from the write itself queues
+      // it. See HouseholdRepositoryImpl.saveHousehold for the reasoning.
+      when(() => mockSource.registerDriverProfile(profile)).thenThrow(
+        FirebaseException(plugin: 'cloud_firestore', code: 'unavailable'),
+      );
       when(() => mockOfflineQueue.enqueue(
             collection: any(named: 'collection'),
             docId: any(named: 'docId'),
@@ -118,12 +116,27 @@ void main() {
       final result = await repo.registerDriverProfile(profile);
 
       expect(result.isRight(), true);
-      verifyNever(() => mockSource.registerDriverProfile(any()));
       verify(() => mockOfflineQueue.enqueue(
             collection: 'drivers',
             docId: 'uid-offline',
             data: profile.toMap(),
           )).called(1);
+    });
+
+    test('does NOT queue and reports the real failure on permission-denied',
+        () async {
+      when(() => mockSource.registerDriverProfile(profile)).thenThrow(
+        FirebaseException(plugin: 'cloud_firestore', code: 'permission-denied'),
+      );
+
+      final result = await repo.registerDriverProfile(profile);
+
+      expect(result.isLeft(), true);
+      verifyNever(() => mockOfflineQueue.enqueue(
+            collection: any(named: 'collection'),
+            docId: any(named: 'docId'),
+            data: any(named: 'data'),
+          ));
     });
   });
 

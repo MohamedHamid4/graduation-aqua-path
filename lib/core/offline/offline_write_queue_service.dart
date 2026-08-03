@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive/hive.dart';
 
+import '../errors/failure_mapper.dart';
+import '../errors/failures.dart';
 import '../logging/app_logger.dart';
 
 /// A single pending write, queued while offline and replayed once
@@ -139,13 +141,29 @@ class OfflineWriteQueueService {
           'Flushed queued write: ${write.collection}/${write.docId}',
           tag: 'OfflineQueue',
         );
-      } catch (e) {
-        AppLogger.warning(
-          'Flush failed for ${write.collection}/${write.docId}, will retry later: $e',
-          tag: 'OfflineQueue',
-        );
-        remaining.add(write);
-        stopped = true;
+      } catch (e, st) {
+        final failure = FailureMapper.map(e, st, tag: 'OfflineQueue');
+        if (failure is NetworkFailure) {
+          // Genuinely still unreachable — keep it queued and stop so
+          // later writes don't jump ahead of one that hasn't landed yet.
+          remaining.add(write);
+          stopped = true;
+        } else {
+          // A real rejection (permission-denied, invalid data, etc.) will
+          // never succeed no matter how many times it's replayed —
+          // silently keeping it queued forever means the user's change is
+          // lost with zero visibility. Log it loudly (reaches Crashlytics
+          // in release) so it's actually diagnosable, and drop it rather
+          // than block every future flush behind a write that can never
+          // land.
+          AppLogger.error(
+            'Dropping permanently-failing queued write: '
+            '${write.collection}/${write.docId} — ${failure.message}',
+            tag: 'OfflineQueue',
+            error: e,
+            stackTrace: st,
+          );
+        }
       }
     }
 

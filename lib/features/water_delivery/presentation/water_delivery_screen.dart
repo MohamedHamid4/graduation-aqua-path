@@ -5,6 +5,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/errors/failure_messages.dart';
+import '../../../core/errors/failures.dart';
 import '../../../core/widgets/aqua_app_bar.dart';
 import '../../../core/widgets/aqua_error_widget.dart';
 import '../../../core/widgets/aqua_shimmer.dart';
@@ -121,9 +123,19 @@ class WaterDeliveryScreen extends ConsumerWidget {
                   );
                 },
                 loading: () => const AquaShimmerList(count: 3),
-                error: (e, _) => AquaErrorWidget.network(
-                  onRetry: () => ref.invalidate(areaWaterDeliveriesProvider),
-                ),
+                error: (e, _) => e is NetworkFailure
+                    ? AquaErrorWidget.network(
+                        onRetry: () =>
+                            ref.invalidate(areaWaterDeliveriesProvider),
+                      )
+                    : AquaErrorWidget(
+                        title: 'تعذّر تحميل البيانات',
+                        message: e is Failure
+                            ? FailureMessages.fromFailure(e)
+                            : 'حدث خطأ غير متوقع. حاول مجدداً.',
+                        onRetry: () =>
+                            ref.invalidate(areaWaterDeliveriesProvider),
+                      ),
               )
               .animate(delay: 450.ms)
               .fadeIn(duration: 400.ms)
