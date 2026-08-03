@@ -8,10 +8,28 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/auth/user_role.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../../core/logging/app_logger.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/security/secure_storage_service.dart';
 import '../../auth/domain/repositories/auth_repository.dart';
 import '../../driver/domain/repositories/driver_repository.dart';
+
+/// Cold-start diagnostic for the session-persistence bug (reported STILL
+/// happening after two earlier fixes). Deliberately NOT gated on
+/// kDebugMode:
+///  - `debugPrint` always prints (even in a release APK) and is visible
+///    over `adb logcat` on a USB-connected device — the one channel that
+///    survives a --release build, since AppLogger's own ConsoleOutput is
+///    kDebugMode-only.
+///  - AppLogger.warning also reaches Crashlytics in release (see
+///    AppLogger's _ReleaseOutput — only warning/error/fatal are forwarded),
+///    so the same evidence is retrievable after the fact from the
+///    Crashlytics console without a USB cable, at the cost of a delay.
+/// Safe to remove once the real cause is confirmed from a real device.
+void _splashLog(String message) {
+  debugPrint('[SplashDiag] $message');
+  AppLogger.warning(message, tag: 'SplashDiag');
+}
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -35,6 +53,15 @@ class _SplashScreenState extends State<SplashScreen> {
 
     final authRepo = GetIt.I<AuthRepository>();
 
+    // Logged BEFORE awaiting the stream: if the synchronous getter
+    // already shows a restored user here, but the stream below still
+    // resolves to null, that's direct evidence the stream (not the
+    // underlying native session) is the broken link.
+    _splashLog(
+      'cold start: synchronous currentUser = '
+      '${authRepo.currentUser?.uid ?? "null"}',
+    );
+
     // Firebase Auth's authoritative signal, not the synchronous
     // `currentUser` getter: `currentUser` can transiently read null on a
     // cold start, before the SDK finishes restoring a persisted session
@@ -46,9 +73,12 @@ class _SplashScreenState extends State<SplashScreen> {
     // always long enough.
     final user = await authRepo.authStateChanges.first;
 
+    _splashLog('authStateChanges.first resolved to uid = ${user?.uid ?? "null"}');
+
     if (!mounted) return;
 
     if (user == null) {
+      _splashLog('routing to /login — no restored session');
       if (mounted) context.go(RouteNames.login);
       return;
     }
@@ -68,12 +98,16 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
     role ??= await authRepo.refreshRoleClaim();
 
+    _splashLog('resolved role = ${role?.name ?? "null"} for uid=${user.uid}');
+
     if (!mounted) return;
     if (role == UserRole.organization) {
+      _splashLog('routing to org dashboard');
       context.go(RouteNames.orgDashboard);
       return;
     }
     if (role == UserRole.driver) {
+      _splashLog('routing to driver schedule');
       context.go('/driver/schedule');
       return;
     }
@@ -86,6 +120,7 @@ class _SplashScreenState extends State<SplashScreen> {
       final isDriver = await GetIt.I<DriverRepository>().isDriver(user.uid);
       if (!mounted) return;
       if (isDriver) {
+        _splashLog('routing to driver schedule (pre-migration isDriver check)');
         context.go('/driver/schedule');
         return;
       }
@@ -96,6 +131,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (pendingRole == 'driver') {
+      _splashLog('routing to driver registration (pendingAccountRole)');
       context.go('/driver/register');
       return;
     }
@@ -105,6 +141,12 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (!onboardingDone) {
+      _splashLog(
+        'routing to /onboarding — isOnboardingComplete read back false. '
+        'If this account already finished onboarding before, SecureStorage '
+        'failed to read its persisted value (see AndroidX Security Crypto '
+        '/ Tink ProGuard keep rules in proguard-rules.pro).',
+      );
       context.go('/onboarding');
       return;
     }
@@ -113,6 +155,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
+    _splashLog(
+      'resident final route: registrationDone=$registrationDone '
+      '(routing to ${registrationDone ? "/" : "/register"})',
+    );
     context.go(
       registrationDone ? '/' : '/register',
     );
