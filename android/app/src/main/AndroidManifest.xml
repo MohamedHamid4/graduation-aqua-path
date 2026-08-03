@@ -31,7 +31,7 @@
     <application
         android:label="AquaPath"
         android:name="${applicationName}"
-        android:icon="@drawable/launch_background">
+        android:icon="@mipmap/ic_launcher">
 
         <!-- Google Maps API key — injected at build time from
              android/local.properties (`maps.apiKey=...`, gitignored) or the

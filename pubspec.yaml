@@ -70,6 +70,7 @@ dev_dependencies:
   mocktail: ^1.0.3
   integration_test:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true
@@ -77,3 +78,18 @@ flutter:
   assets:
     - assets/images/
     - assets/fonts/
+
+# `dart run flutter_launcher_icons` regenerates android/app/src/main/res/
+# mipmap-*/ic_launcher*.png|webp from this single source image. The source
+# (assets/icons/logo-aquapath.png) has an opaque white background — not
+# transparent, since it was authored/exported as a JPEG — so the adaptive
+# icon background below is set to match that same white rather than a
+# brand color, keeping the legacy square icon and the adaptive
+# foreground+background visually identical instead of showing a seam.
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icons/logo-aquapath.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icons/logo-aquapath.png"
