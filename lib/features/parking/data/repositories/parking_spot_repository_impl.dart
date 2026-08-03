@@ -1,10 +1,12 @@
 import 'package:dartz/dartz.dart';
 
+import '../../../../core/errors/failure_mapper.dart';
 import '../../../../core/errors/failures.dart';
-import '../../../../core/logging/app_logger.dart';
 import '../../domain/entities/parking_spot.dart';
 import '../../domain/repositories/parking_spot_repository.dart';
 import '../datasources/parking_spot_firebase_source.dart';
+
+const _tag = 'ParkingSpot';
 
 class ParkingSpotRepositoryImpl implements ParkingSpotRepository {
   final ParkingSpotFirebaseSource _source;
@@ -12,30 +14,20 @@ class ParkingSpotRepositoryImpl implements ParkingSpotRepository {
   ParkingSpotRepositoryImpl(this._source);
 
   @override
-  Stream<Either<Failure, List<ParkingSpot>>> watchVerifiedSpots() {
-    try {
-      return _source.watchVerifiedSpots().map(
-            (dtos) => Right<Failure, List<ParkingSpot>>(
-              dtos.map((dto) => dto.toDomain()).toList(),
-            ),
-          );
-    } catch (e) {
-      return Stream.value(Left(ServerFailure(e.toString())));
-    }
-  }
+  Stream<Either<Failure, List<ParkingSpot>>> watchVerifiedSpots() =>
+      FailureMapper.mapStream(
+        _source.watchVerifiedSpots,
+        (dtos) => dtos.map((dto) => dto.toDomain()).toList(),
+        tag: _tag,
+      );
 
   @override
-  Stream<Either<Failure, List<ParkingSpot>>> watchAllSpots() {
-    try {
-      return _source.watchAllSpots().map(
-            (dtos) => Right<Failure, List<ParkingSpot>>(
-              dtos.map((dto) => dto.toDomain()).toList(),
-            ),
-          );
-    } catch (e) {
-      return Stream.value(Left(ServerFailure(e.toString())));
-    }
-  }
+  Stream<Either<Failure, List<ParkingSpot>>> watchAllSpots() =>
+      FailureMapper.mapStream(
+        _source.watchAllSpots,
+        (dtos) => dtos.map((dto) => dto.toDomain()).toList(),
+        tag: _tag,
+      );
 
   @override
   Future<Either<Failure, Unit>> registerStop({
@@ -53,13 +45,7 @@ class ParkingSpotRepositoryImpl implements ParkingSpotRepository {
       );
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error(
-        'registerStop failed',
-        tag: 'ParkingSpot',
-        error: e,
-        stackTrace: st,
-      );
-      return const Left(ServerFailure('فشل تسجيل موقع التوقف'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -69,9 +55,7 @@ class ParkingSpotRepositoryImpl implements ParkingSpotRepository {
       await _source.setApprovalStatus(spotId, 'approved');
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error('approveSpot failed',
-          tag: 'ParkingSpot', error: e, stackTrace: st);
-      return const Left(ServerFailure('فشل اعتماد موقع الانتظار'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -81,9 +65,7 @@ class ParkingSpotRepositoryImpl implements ParkingSpotRepository {
       await _source.setApprovalStatus(spotId, 'disabled');
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error('disableSpot failed',
-          tag: 'ParkingSpot', error: e, stackTrace: st);
-      return const Left(ServerFailure('فشل تعطيل موقع الانتظار'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -104,9 +86,7 @@ class ParkingSpotRepositoryImpl implements ParkingSpotRepository {
       await _source.updateSpot(spotId, patch);
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error('editSpot failed',
-          tag: 'ParkingSpot', error: e, stackTrace: st);
-      return const Left(ServerFailure('فشل تعديل موقع الانتظار'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -116,9 +96,7 @@ class ParkingSpotRepositoryImpl implements ParkingSpotRepository {
       await _source.deleteSpot(spotId);
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error('deleteSpot failed',
-          tag: 'ParkingSpot', error: e, stackTrace: st);
-      return const Left(ServerFailure('فشل حذف موقع الانتظار'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 }

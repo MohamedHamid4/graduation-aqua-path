@@ -11,34 +11,42 @@ import '../../domain/repositories/organization_repository.dart';
 
 OrganizationRepository get _orgRepo => GetIt.I<OrganizationRepository>();
 
+// Every stream below propagates a repository Left(Failure) by rethrowing
+// it (either.fold's error branch) instead of silently collapsing it to an
+// empty list. Swallowing the failure made a real error (permission-denied,
+// a missing composite index, an actual network failure) visually
+// indistinguishable from "there's genuinely nothing here yet" — the
+// screen's AsyncValue.error handler is what actually gets a chance to
+// show the real cause instead.
+
 final allDriversProvider = StreamProvider<List<DriverProfile>>((ref) {
   return _orgRepo.watchAllDrivers().map(
-        (either) => either.fold((_) => <DriverProfile>[], (d) => d),
+        (either) => either.fold((failure) => throw failure, (d) => d),
       );
 });
 
 final allHouseholdsProvider = StreamProvider<List<HouseholdModel>>((ref) {
   return _orgRepo.watchAllHouseholds().map(
-        (either) => either.fold((_) => <HouseholdModel>[], (h) => h),
+        (either) => either.fold((failure) => throw failure, (h) => h),
       );
 });
 
 final allAreasProvider = StreamProvider<List<ServiceArea>>((ref) {
   return _orgRepo.watchAllAreas().map(
-        (either) => either.fold((_) => <ServiceArea>[], (a) => a),
+        (either) => either.fold((failure) => throw failure, (a) => a),
       );
 });
 
 final allRoutesProvider = StreamProvider<List<DriverRoute>>((ref) {
   return _orgRepo.watchAllRoutes().map(
-        (either) => either.fold((_) => <DriverRoute>[], (r) => r),
+        (either) => either.fold((failure) => throw failure, (r) => r),
       );
 });
 
 final notificationHistoryProvider =
     StreamProvider<List<OrgNotification>>((ref) {
   return _orgRepo.watchNotificationHistory().map(
-        (either) => either.fold((_) => <OrgNotification>[], (n) => n),
+        (either) => either.fold((failure) => throw failure, (n) => n),
       );
 });
 

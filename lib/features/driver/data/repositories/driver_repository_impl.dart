@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/errors/failure_mapper.dart';
@@ -85,28 +83,22 @@ class DriverRepositoryImpl implements DriverRepository {
   @override
   Stream<Either<Failure, List<DriverRoute>>> watchRoutesForDriver(
     String driverUid,
-  ) {
-    return _source.watchRoutesForDriver(driverUid).transform(
-          StreamTransformer.fromHandlers(
-            handleData: (routes, sink) => sink.add(Right(routes)),
-            handleError: (error, stackTrace, sink) => sink
-                .add(Left(FailureMapper.map(error, stackTrace, tag: _tag))),
-          ),
-        );
-  }
+  ) =>
+      FailureMapper.mapStream(
+        () => _source.watchRoutesForDriver(driverUid),
+        (routes) => routes,
+        tag: _tag,
+      );
 
   @override
   Stream<Either<Failure, List<DriverRoute>>> watchRoutesForArea(
     String areaName,
-  ) {
-    return _source.watchRoutesForArea(areaName).transform(
-          StreamTransformer.fromHandlers(
-            handleData: (routes, sink) => sink.add(Right(routes)),
-            handleError: (error, stackTrace, sink) => sink
-                .add(Left(FailureMapper.map(error, stackTrace, tag: _tag))),
-          ),
-        );
-  }
+  ) =>
+      FailureMapper.mapStream(
+        () => _source.watchRoutesForArea(areaName),
+        (routes) => routes,
+        tag: _tag,
+      );
 
   @override
   Future<Either<Failure, Unit>> updateRouteStatus({

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failure_mapper.dart';
 import '../../../../core/errors/failures.dart';
@@ -63,13 +61,11 @@ class WaterDeliveryRepositoryImpl implements WaterDeliveryRepository {
   Stream<Either<Failure, List<WaterDeliveryDto>>> _watchDeliveries(
     String areaName,
   ) {
-    return firebaseSource.getAreaDeliveriesStream(areaName).transform(
-          StreamTransformer.fromHandlers(
-            handleData: (dtos, sink) => sink.add(Right(dtos)),
-            handleError: (error, stackTrace, sink) =>
-                sink.add(Left(FailureMapper.map(error, stackTrace, tag: _tag))),
-          ),
-        );
+    return FailureMapper.mapStream(
+      () => firebaseSource.getAreaDeliveriesStream(areaName),
+      (dtos) => dtos,
+      tag: _tag,
+    );
   }
 
   @override

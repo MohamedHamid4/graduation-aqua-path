@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 
+import '../../../../core/errors/failure_mapper.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/network/connectivity_service.dart';
 import '../datasources/truck_firebase_source.dart';
@@ -7,6 +8,8 @@ import '../datasources/truck_local_source.dart';
 import '../models/truck_dto.dart';
 import '../../domain/entities/truck.dart';
 import '../../domain/repositories/truck_repository.dart';
+
+const _tag = 'Truck';
 
 class TruckRepositoryImpl implements TruckRepository {
   final TruckFirebaseSource firebaseSource;
@@ -19,19 +22,28 @@ class TruckRepositoryImpl implements TruckRepository {
     required this.connectivityService,
   });
 
+  /// Wraps the live Firestore trucks stream so a stream ERROR (e.g.
+  /// permission-denied) becomes a typed Left(Failure) data event instead
+  /// of propagating raw and bypassing Either-wrapping — see
+  /// FailureMapper doc comment for why a bare `.map()` isn't enough.
+  Stream<Either<Failure, List<Truck>>> _watchLive() {
+    return FailureMapper.mapStream(
+      firebaseSource.getTrucksStream,
+      (dtos) {
+        localSource.cacheTrucks(dtos.map((d) => d.toMap()).toList());
+        localSource.updateCacheTime();
+        return dtos.map((dto) => dto.toDomain()).toList();
+      },
+      tag: _tag,
+    );
+  }
+
   @override
   Stream<Either<Failure, List<Truck>>> getTrucksStream() async* {
     final connected = await connectivityService.isConnected;
 
     if (connected) {
-      yield* firebaseSource.getTrucksStream().map((dtos) {
-        // Persist to local cache while online
-        localSource.cacheTrucks(dtos.map((d) => d.toMap()).toList());
-        localSource.updateCacheTime();
-        return Right<Failure, List<Truck>>(
-          dtos.map((dto) => dto.toDomain()).toList(),
-        );
-      });
+      yield* _watchLive();
     } else {
       // M-6: Offline — emit cache immediately, then watch for reconnection and
       // switch to the live Firebase stream without requiring a screen reload.
@@ -44,13 +56,7 @@ class TruckRepositoryImpl implements TruckRepository {
 
       await for (final isOnline in connectivityService.onConnectivityChanged) {
         if (isOnline) {
-          yield* firebaseSource.getTrucksStream().map((dtos) {
-            localSource.cacheTrucks(dtos.map((d) => d.toMap()).toList());
-            localSource.updateCacheTime();
-            return Right<Failure, List<Truck>>(
-              dtos.map((dto) => dto.toDomain()).toList(),
-            );
-          });
+          yield* _watchLive();
           return;
         }
       }
@@ -65,8 +71,8 @@ class TruckRepositoryImpl implements TruckRepository {
         return const Left(NotFoundFailure('الشاحنة غير موجودة'));
       }
       return Right(dto.toDomain());
-    } on Exception catch (e) {
-      return Left(ServerFailure(e.toString()));
+    } catch (e, st) {
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -79,8 +85,8 @@ class TruckRepositoryImpl implements TruckRepository {
     try {
       await firebaseSource.updateTruckLocation(truckId, lat, lng);
       return const Right(null);
-    } on Exception catch (e) {
-      return Left(ServerFailure(e.toString()));
+    } catch (e, st) {
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -105,8 +111,8 @@ class TruckRepositoryImpl implements TruckRepository {
         activeRouteId: activeRouteId,
       );
       return const Right(null);
-    } on Exception catch (e) {
-      return Left(ServerFailure(e.toString()));
+    } catch (e, st) {
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -115,8 +121,8 @@ class TruckRepositoryImpl implements TruckRepository {
     try {
       await firebaseSource.endTrip(truckId);
       return const Right(null);
-    } on Exception catch (e) {
-      return Left(ServerFailure(e.toString()));
+    } catch (e, st) {
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -125,8 +131,8 @@ class TruckRepositoryImpl implements TruckRepository {
     try {
       await firebaseSource.pauseTrip(truckId);
       return const Right(null);
-    } on Exception catch (e) {
-      return Left(ServerFailure(e.toString()));
+    } catch (e, st) {
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -135,8 +141,8 @@ class TruckRepositoryImpl implements TruckRepository {
     try {
       await firebaseSource.resumeTrip(truckId);
       return const Right(null);
-    } on Exception catch (e) {
-      return Left(ServerFailure(e.toString()));
+    } catch (e, st) {
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -148,8 +154,8 @@ class TruckRepositoryImpl implements TruckRepository {
     try {
       await firebaseSource.recordDelivery(truckId: truckId, liters: liters);
       return const Right(null);
-    } on Exception catch (e) {
-      return Left(ServerFailure(e.toString()));
+    } catch (e, st) {
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 }

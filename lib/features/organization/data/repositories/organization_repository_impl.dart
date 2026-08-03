@@ -1,6 +1,7 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:dartz/dartz.dart';
 
+import '../../../../core/errors/failure_mapper.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/logging/app_logger.dart';
 import '../../../../shared/models/household_model.dart';
@@ -13,6 +14,8 @@ import '../../domain/entities/service_area.dart';
 import '../../domain/repositories/organization_repository.dart';
 import '../datasources/organization_firebase_source.dart';
 
+const _tag = 'Organization';
+
 class OrganizationRepositoryImpl implements OrganizationRepository {
   final OrganizationFirebaseSource _source;
 
@@ -24,22 +27,13 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
     try {
       return Right(await _source.getOwnProfile(uid));
     } catch (e, st) {
-      AppLogger.error('getOwnProfile failed',
-          tag: 'Organization', error: e, stackTrace: st);
-      return const Left(ServerFailure('تعذّر تحميل بيانات المؤسسة'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
   @override
-  Stream<Either<Failure, List<DriverProfile>>> watchAllDrivers() {
-    try {
-      return _source.watchAllDrivers().map(
-            (drivers) => Right<Failure, List<DriverProfile>>(drivers),
-          );
-    } catch (e) {
-      return Stream.value(Left(ServerFailure(e.toString())));
-    }
-  }
+  Stream<Either<Failure, List<DriverProfile>>> watchAllDrivers() =>
+      FailureMapper.mapStream(_source.watchAllDrivers, (d) => d, tag: _tag);
 
   @override
   Future<Either<Failure, Unit>> setDriverActive({
@@ -55,13 +49,11 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       return const Right(unit);
     } on FirebaseFunctionsException catch (e, st) {
       AppLogger.error('setDriverActive callable failed [${e.code}]',
-          tag: 'Organization', error: e, stackTrace: st);
+          tag: _tag, error: e, stackTrace: st);
       return Left(
           ServerFailure('تعذّر تغيير صلاحية السائق: ${e.message ?? e.code}'));
     } catch (e, st) {
-      AppLogger.error('setDriverActive failed',
-          tag: 'Organization', error: e, stackTrace: st);
-      return const Left(ServerFailure('فشل تحديث حالة السائق'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -74,9 +66,7 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       await _source.assignDriverToArea(driverUid, areaId);
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error('assignDriverToArea failed',
-          tag: 'Organization', error: e, stackTrace: st);
-      return const Left(ServerFailure('فشل تعيين السائق للمنطقة'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -94,33 +84,17 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       );
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error('updateTruckInfo failed',
-          tag: 'Organization', error: e, stackTrace: st);
-      return const Left(ServerFailure('فشل تحديث بيانات الشاحنة'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
   @override
-  Stream<Either<Failure, List<HouseholdModel>>> watchAllHouseholds() {
-    try {
-      return _source.watchAllHouseholds().map(
-            (households) => Right<Failure, List<HouseholdModel>>(households),
-          );
-    } catch (e) {
-      return Stream.value(Left(ServerFailure(e.toString())));
-    }
-  }
+  Stream<Either<Failure, List<HouseholdModel>>> watchAllHouseholds() =>
+      FailureMapper.mapStream(_source.watchAllHouseholds, (h) => h, tag: _tag);
 
   @override
-  Stream<Either<Failure, List<ServiceArea>>> watchAllAreas() {
-    try {
-      return _source.watchAllAreas().map(
-            (areas) => Right<Failure, List<ServiceArea>>(areas),
-          );
-    } catch (e) {
-      return Stream.value(Left(ServerFailure(e.toString())));
-    }
-  }
+  Stream<Either<Failure, List<ServiceArea>>> watchAllAreas() =>
+      FailureMapper.mapStream(_source.watchAllAreas, (a) => a, tag: _tag);
 
   @override
   Future<Either<Failure, Unit>> upsertArea(ServiceArea area) async {
@@ -128,9 +102,7 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       await _source.upsertArea(area);
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error('upsertArea failed',
-          tag: 'Organization', error: e, stackTrace: st);
-      return const Left(ServerFailure('فشل حفظ بيانات المنطقة'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -140,9 +112,7 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       await _source.deleteArea(areaId);
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error('deleteArea failed',
-          tag: 'Organization', error: e, stackTrace: st);
-      return const Left(ServerFailure('فشل حذف المنطقة'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -150,27 +120,18 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
   String newAreaId() => _source.newAreaId();
 
   @override
-  Stream<Either<Failure, List<DriverRoute>>> watchAllRoutes() {
-    try {
-      return _source.watchAllRoutes().map(
-            (routes) => Right<Failure, List<DriverRoute>>(routes),
-          );
-    } catch (e) {
-      return Stream.value(Left(ServerFailure(e.toString())));
-    }
-  }
+  Stream<Either<Failure, List<DriverRoute>>> watchAllRoutes() =>
+      FailureMapper.mapStream(_source.watchAllRoutes, (r) => r, tag: _tag);
 
   @override
   Future<Either<Failure, Unit>> createRoute(DriverRoute route) async {
     try {
       await _source.createRoute(route);
       AppLogger.info('Route created for driver ${route.driverUid}',
-          tag: 'Organization');
+          tag: _tag);
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error('createRoute failed',
-          tag: 'Organization', error: e, stackTrace: st);
-      return const Left(ServerFailure('فشل إنشاء جدول الرحلة'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -180,9 +141,7 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       await _source.deleteRoute(routeId);
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error('deleteRoute failed',
-          tag: 'Organization', error: e, stackTrace: st);
-      return const Left(ServerFailure('فشل حذف الرحلة'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -253,9 +212,7 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
         driverNames: driverNames,
       ));
     } catch (e, st) {
-      AppLogger.error('buildReport failed',
-          tag: 'Organization', error: e, stackTrace: st);
-      return const Left(ServerFailure('فشل إنشاء التقرير'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -266,28 +223,21 @@ class OrganizationRepositoryImpl implements OrganizationRepository {
       await _source.sendNotification(notification.toMap());
       AppLogger.info(
         'Notification queued: area=${notification.areaName ?? "all"}',
-        tag: 'Organization',
+        tag: _tag,
       );
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error('sendNotification failed',
-          tag: 'Organization', error: e, stackTrace: st);
-      return const Left(ServerFailure('فشل إرسال الإشعار'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
   @override
-  Stream<Either<Failure, List<OrgNotification>>> watchNotificationHistory() {
-    try {
-      return _source.watchNotificationHistory().map(
-            (rows) => Right<Failure, List<OrgNotification>>(
-              rows
-                  .map((r) => OrgNotification.fromMap(r['id'] as String, r))
-                  .toList(),
-            ),
-          );
-    } catch (e) {
-      return Stream.value(Left(ServerFailure(e.toString())));
-    }
-  }
+  Stream<Either<Failure, List<OrgNotification>>> watchNotificationHistory() =>
+      FailureMapper.mapStream(
+        _source.watchNotificationHistory,
+        (rows) => rows
+            .map((r) => OrgNotification.fromMap(r['id'] as String, r))
+            .toList(),
+        tag: _tag,
+      );
 }

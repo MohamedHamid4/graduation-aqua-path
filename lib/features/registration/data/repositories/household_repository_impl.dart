@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:dartz/dartz.dart';
 
 import '../../../../core/errors/failure_mapper.dart';
@@ -72,13 +70,10 @@ class HouseholdRepositoryImpl implements HouseholdRepository {
   }
 
   @override
-  Stream<Either<Failure, HouseholdModel?>> watchHousehold(String uid) {
-    return _source.watchHousehold(uid).transform(
-          StreamTransformer.fromHandlers(
-            handleData: (household, sink) => sink.add(Right(household)),
-            handleError: (error, stackTrace, sink) => sink
-                .add(Left(FailureMapper.map(error, stackTrace, tag: _tag))),
-          ),
-        );
-  }
+  Stream<Either<Failure, HouseholdModel?>> watchHousehold(String uid) =>
+      FailureMapper.mapStream(
+        () => _source.watchHousehold(uid),
+        (household) => household,
+        tag: _tag,
+      );
 }

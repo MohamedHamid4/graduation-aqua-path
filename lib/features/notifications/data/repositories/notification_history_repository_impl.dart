@@ -1,10 +1,12 @@
 import 'package:dartz/dartz.dart';
 
+import '../../../../core/errors/failure_mapper.dart';
 import '../../../../core/errors/failures.dart';
-import '../../../../core/logging/app_logger.dart';
 import '../../domain/entities/notification_item.dart';
 import '../../domain/repositories/notification_history_repository.dart';
 import '../datasources/notification_history_firebase_source.dart';
+
+const _tag = 'NotificationHistory';
 
 class NotificationHistoryRepositoryImpl
     implements NotificationHistoryRepository {
@@ -15,15 +17,12 @@ class NotificationHistoryRepositoryImpl
   @override
   Stream<Either<Failure, List<NotificationItem>>> watchNotifications(
     String uid,
-  ) {
-    try {
-      return _source.watchNotifications(uid).map(
-            (items) => Right<Failure, List<NotificationItem>>(items),
-          );
-    } catch (e) {
-      return Stream.value(Left(ServerFailure(e.toString())));
-    }
-  }
+  ) =>
+      FailureMapper.mapStream(
+        () => _source.watchNotifications(uid),
+        (items) => items,
+        tag: _tag,
+      );
 
   @override
   Future<Either<Failure, Unit>> recordReceived({
@@ -45,13 +44,7 @@ class NotificationHistoryRepositoryImpl
       );
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error(
-        'recordReceived failed',
-        tag: 'NotificationHistory',
-        error: e,
-        stackTrace: st,
-      );
-      return const Left(ServerFailure('تعذّر حفظ الإشعار'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -64,13 +57,7 @@ class NotificationHistoryRepositoryImpl
       await _source.markRead(uid, itemId);
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error(
-        'markRead failed',
-        tag: 'NotificationHistory',
-        error: e,
-        stackTrace: st,
-      );
-      return const Left(ServerFailure('تعذّر تحديث حالة الإشعار'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 
@@ -80,13 +67,7 @@ class NotificationHistoryRepositoryImpl
       await _source.markAllRead(uid);
       return const Right(unit);
     } catch (e, st) {
-      AppLogger.error(
-        'markAllRead failed',
-        tag: 'NotificationHistory',
-        error: e,
-        stackTrace: st,
-      );
-      return const Left(ServerFailure('تعذّر تحديث حالة الإشعارات'));
+      return Left(FailureMapper.map(e, st, tag: _tag));
     }
   }
 }

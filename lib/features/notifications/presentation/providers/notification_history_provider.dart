@@ -13,8 +13,7 @@ final notificationHistoryProvider =
   if (uid == null) return Stream.value(const []);
 
   return GetIt.I<NotificationHistoryRepository>().watchNotifications(uid).map(
-        (either) =>
-            either.fold((_) => const <NotificationItem>[], (items) => items),
+        (either) => either.fold((failure) => throw failure, (items) => items),
       );
 });
 

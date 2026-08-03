@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dartz/dartz.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import '../logging/app_logger.dart';
@@ -38,6 +41,36 @@ abstract final class FailureMapper {
       stackTrace: stackTrace,
     );
     return UnknownFailure(error.toString());
+  }
+
+  /// Wraps a raw data-source stream (e.g. a Firestore `.snapshots()` map)
+  /// so BOTH failure modes become a typed `Left(Failure)` data event
+  /// instead of an uncaught/unclassified exception:
+  ///  - a synchronous throw from calling [source] itself (e.g. a
+  ///    misconfigured client, or in tests, a mocked method stubbed with
+  ///    `thenThrow`) — caught here since a bare `.transform()` never sees
+  ///    an exception thrown before the Stream is even obtained;
+  ///  - an async error EVENT emitted by the stream once subscribed — a
+  ///    bare `.map()` only transforms data events, so this would
+  ///    otherwise bypass Either-wrapping entirely.
+  /// [source] is a zero-arg function (not the stream itself) precisely so
+  /// the first failure mode can be caught at all.
+  static Stream<Either<Failure, T>> mapStream<S, T>(
+    Stream<S> Function() source,
+    T Function(S) transform, {
+    required String tag,
+  }) {
+    try {
+      return source().transform(
+        StreamTransformer<S, Either<Failure, T>>.fromHandlers(
+          handleData: (data, sink) => sink.add(Right(transform(data))),
+          handleError: (error, stackTrace, sink) =>
+              sink.add(Left(map(error, stackTrace, tag: tag))),
+        ),
+      );
+    } catch (e, st) {
+      return Stream.value(Left(map(e, st, tag: tag)));
+    }
   }
 
   static Failure _fromFirebaseCode(FirebaseException error) {
