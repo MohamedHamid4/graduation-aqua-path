@@ -33,7 +33,7 @@ admin.initializeApp({
 (async () => {
   // إنشاء حساب Firebase Auth للمؤسسة
   const user = await admin.auth().createUser({
-    email: 'admin@aquapath.example',
+    email: 'REPLACE_WITH_THE_REAL_ADMIN_EMAIL',
     password: 'REPLACE_WITH_A_STRONG_PASSWORD',
   });
 
@@ -43,7 +43,7 @@ admin.initializeApp({
   // إنشاء وثيقة الملف الشخصي في Firestore
   await admin.firestore().collection('organizations').doc(user.uid).set({
     orgName: 'AquaPath Operations',
-    contactEmail: 'admin@aquapath.example',
+    contactEmail: 'REPLACE_WITH_THE_REAL_ADMIN_EMAIL',
     contactPhone: '',
     createdAt: new Date().toISOString(),
     createdBy: 'bootstrap-script',
@@ -68,3 +68,36 @@ admin.initializeApp({
 ## ملاحظة أمنية
 
 لا تُبقِ مفتاح Service Account على أي جهاز أو مستودع بعد إتمام هذا الإجراء. إن أُنشئت بيئات متعددة (staging/production)، كرّر هذا الإجراء بمفتاح Service Account خاص بكل بيئة على حدة — لا تُعِد استخدام نفس المفتاح بين بيئتين.
+
+## استكشاف الأخطاء: "لا يمكن تسجيل الدخول بحساب المؤسسة"
+
+كل مسار الكود (`org_login_screen.dart`, `app_router.dart`, قاعدة `organizations/{uid}` في `firestore.rules`) صحيح ولا يحتوي على خطأ برمجي معروف. السبب الأشيع عمليًا هو أن الحساب الفعلي الذي أُنشئ عبر السكربت أعلاه **لا يطابق** البريد الإلكتروني الذي تحاول الدخول به — خصوصًا إذا نُسخ السكربت دون استبدال `REPLACE_WITH_THE_REAL_ADMIN_EMAIL` بالبريد الصحيح (نسخة سابقة من هذا الدليل كانت تستخدم `admin@aquapath.example` كمثال حرفي، وهو فخ سهل الوقوع فيه إن لم يُستبدل).
+
+شغّل هذا السكربت التشخيصي (بنفس مفتاح Service Account) للتحقق من الحالة الفعلية في مشروعك دون تعديل أي شيء:
+
+```bash
+node -e "
+const admin = require('firebase-admin');
+admin.initializeApp({
+  credential: admin.credential.cert(require('/المسار/الكامل/إلى/serviceAccountKey.json')),
+});
+
+(async () => {
+  const email = 'admin@aquapath.com'; // ضع البريد الذي تحاول الدخول به هنا
+  try {
+    const user = await admin.auth().getUserByEmail(email);
+    console.log('Auth user found — uid:', user.uid);
+    console.log('Custom claims:', user.customClaims);
+    const orgDoc = await admin.firestore().collection('organizations').doc(user.uid).get();
+    console.log('organizations/{uid} exists:', orgDoc.exists, orgDoc.data());
+  } catch (e) {
+    console.error('No Auth user with this email:', e.message);
+  }
+  process.exit(0);
+})();
+"
+```
+
+- إن طُبعت رسالة "No Auth user with this email" — الحساب الذي تحاول الدخول به غير موجود أصلاً؛ ابحث عن الحساب الحقيقي عبر Firebase Console → Authentication (ابحث بالاسم أو بالبريد التقريبي) أو أعد تشغيل خطوة 2 بالبريد الصحيح.
+- إن ظهر الحساب لكن `Custom claims` فارغ أو لا يحتوي `role: 'organization'` — أعد تشغيل السطر الحاسم فقط: `admin.auth().setCustomUserClaims(uid, { role: 'organization' })` بنفس الـ uid المطبوع، ثم أعد تسجيل الدخول (يفرض التطبيق تحديث التوكن تلقائيًا عبر `waitForRoleClaim`).
+- إن كان `organizations/{uid} exists: false` — أعد تشغيل جزء `db.collection('organizations').doc(user.uid).set(...)` من خطوة 2 بنفس الـ uid.
