@@ -208,6 +208,22 @@ class RegistrationNotifier extends Notifier<RegistrationFormState> {
 
     state = state.copyWith(isSubmitting: true, clearError: true);
 
+    // households/{uid} UPDATE (editing an existing household, as opposed
+    // to first-time creation) requires the `resident` custom claim on the
+    // ID token the write is sent with — see firestore.rules. That claim
+    // is granted once, at first registration, and Firebase Auth's SDK
+    // keeps it on every subsequently-refreshed token, so this is not
+    // expected to actually be missing for an established resident. But
+    // it costs one cheap, already-deduplicated round trip (refreshRoleClaim
+    // just decodes a forced-fresh ID token) to remove the possibility
+    // entirely rather than have an edit silently fail on a
+    // permission-denied if the locally cached token were ever stale —
+    // exactly the failure mode that used to be misreported as false
+    // success/false "connection error" before this fix.
+    if (state.isEditingExisting) {
+      await GetIt.I<AuthRepository>().refreshRoleClaim();
+    }
+
     // Trimmed once, here at the save boundary — kept untrimmed in state
     // itself so the edit-flow controller sync in RegistrationScreen
     // doesn't fight the user while they're still typing (see

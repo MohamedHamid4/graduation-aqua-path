@@ -52,6 +52,11 @@ void main() {
     when(() => mockAuth.currentUser).thenReturn(_testUser);
     when(() => mockAuth.waitForRoleClaim())
         .thenAnswer((_) async => UserRole.resident);
+    // Forced before every UPDATE (editing an already-submitted household)
+    // to guarantee the write carries a fresh, claim-bearing ID token —
+    // see RegistrationNotifier.submit.
+    when(() => mockAuth.refreshRoleClaim())
+        .thenAnswer((_) async => UserRole.resident);
 
     final sl = GetIt.I;
     if (sl.isRegistered<AuthRepository>()) sl.unregister<AuthRepository>();
