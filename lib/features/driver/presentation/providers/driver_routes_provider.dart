@@ -12,8 +12,13 @@ final driverRoutesProvider = StreamProvider<List<DriverRoute>>((ref) {
   if (uid == null) return Stream.value(const []);
 
   return GetIt.I<DriverRepository>().watchRoutesForDriver(uid).map(
-        (either) =>
-            either.fold((_) => const <DriverRoute>[], (routes) => routes),
+        (either) => either.fold(
+          // A real failure (permission-denied, missing index, network) must
+          // not be silently displayed as "no routes assigned" — that hid
+          // the actual cause behind an indistinguishable empty state.
+          (failure) => throw failure,
+          (routes) => routes,
+        ),
       );
 });
 

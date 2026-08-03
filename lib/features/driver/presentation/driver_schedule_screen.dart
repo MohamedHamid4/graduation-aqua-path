@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/errors/failure_messages.dart';
+import '../../../core/errors/failures.dart';
 import '../../../core/router/route_names.dart';
 import '../../../core/widgets/aqua_error_widget.dart';
 import '../../../core/widgets/aqua_shimmer.dart';
@@ -89,9 +91,17 @@ class DriverScheduleScreen extends ConsumerWidget {
                 loading: () => const Center(
                   child: CircularProgressIndicator(color: AppColors.primary),
                 ),
-                error: (e, _) => AquaErrorWidget.network(
-                  onRetry: () => ref.invalidate(driverRoutesProvider),
-                ),
+                error: (e, _) => e is NetworkFailure
+                    ? AquaErrorWidget.network(
+                        onRetry: () => ref.invalidate(driverRoutesProvider),
+                      )
+                    : AquaErrorWidget(
+                        title: 'تعذّر تحميل الرحلات',
+                        message: e is Failure
+                            ? FailureMessages.fromFailure(e)
+                            : 'حدث خطأ غير متوقع. حاول مجدداً.',
+                        onRetry: () => ref.invalidate(driverRoutesProvider),
+                      ),
               ),
             ),
           ],
